@@ -1,0 +1,18 @@
+# Environment
+.env
+.env.*
+
+# Foundry build artifacts
+out/
+cache/
+broadcast/
+
+# Scripts
+script/
+
+# Other
+node_modules/
+dist/
+coverage/
+*.log
+.DS_Store
