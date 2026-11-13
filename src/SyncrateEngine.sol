@@ -12,13 +12,7 @@ interface AggregatorV3Interface {
     function latestRoundData()
         external
         view
-        returns (
-            uint80 roundId,
-            int256 answer,
-            uint256 startedAt,
-            uint256 updatedAt,
-            uint80 answeredInRound
-        );
+        returns (uint80 roundId, int256 answer, uint256 startedAt, uint256 updatedAt, uint80 answeredInRound);
 }
 
 interface ISGLDToken {
@@ -30,12 +24,7 @@ interface ISGLDToken {
 /// @title Syncrate Mint & Redeem Engine
 /// @notice Handles collateral deposits, oracle data, asynchronous FIFO redemptions,
 ///         and cross-chain capacity reservations.
-contract SyncrateEngine is 
-    Initializable, 
-    AccessControlUpgradeable, 
-    PausableUpgradeable, 
-    UUPSUpgradeable
-{
+contract SyncrateEngine is Initializable, AccessControlUpgradeable, PausableUpgradeable, UUPSUpgradeable {
     using SafeERC20 for IERC20;
 
     bytes32 public constant RESERVE_MANAGER_ROLE = keccak256("RESERVE_MANAGER_ROLE");
@@ -45,12 +34,12 @@ contract SyncrateEngine is
     AggregatorV3Interface public goldPriceFeed;
 
     uint256 public reserveCap;
-    
+
     // Fee configuration
-    uint256 public redeemFeeBps; 
+    uint256 public redeemFeeBps;
     uint256 public constant MAX_FEE_BPS = 500;
     uint256 public constant BPS_DENOMINATOR = 10000;
-    
+
     address public constant FEE_RECIPIENT = 0x42f0E74872c77939422f3c6cEb9D62984BaE5b69;
     address public constant TREASURY = 0x42f0E74872c77939422f3c6cEb9D62984BaE5b69;
 
@@ -75,9 +64,19 @@ contract SyncrateEngine is
     // Events
     event CollateralStatusUpdated(address indexed token, bool allowed);
     event GoldPriceFeedUpdated(address indexed newPriceFeed);
-    event SGLDMinted(address indexed user, address indexed collateralToken, uint256 sgldAmount, uint256 collateralSpent);
-    event SGLDRedeemedImmediate(address indexed user, address indexed stablecoin, uint256 sgldBurned, uint256 stablecoinPaid, uint256 fee);
-    event SGLDRedemptionQueued(uint256 indexed queueIndex, address indexed user, address indexed stablecoin, uint256 sgldBurned, uint256 stablecoinOwed);
+    event SGLDMinted(
+        address indexed user, address indexed collateralToken, uint256 sgldAmount, uint256 collateralSpent
+    );
+    event SGLDRedeemedImmediate(
+        address indexed user, address indexed stablecoin, uint256 sgldBurned, uint256 stablecoinPaid, uint256 fee
+    );
+    event SGLDRedemptionQueued(
+        uint256 indexed queueIndex,
+        address indexed user,
+        address indexed stablecoin,
+        uint256 sgldBurned,
+        uint256 stablecoinOwed
+    );
     event QueueProcessed(uint256 indexed startIndex, uint256 indexed endIndex, uint256 totalPaidOut);
     event CapacityReserved(bytes32 indexed requestId, uint256 sgldAmount);
     event ReservationConfirmed(bytes32 indexed requestId, uint256 sgldAmount);
@@ -106,7 +105,7 @@ contract SyncrateEngine is
         address _sgldToken,
         address _goldPriceFeed,
         uint256 _oracleStalenessThreshold
-    ) initializer public {
+    ) public initializer {
         __AccessControl_init();
         __Pausable_init();
 
@@ -117,8 +116,8 @@ contract SyncrateEngine is
         sgldToken = ISGLDToken(_sgldToken);
         goldPriceFeed = AggregatorV3Interface(_goldPriceFeed);
         oracleStalenessThreshold = _oracleStalenessThreshold;
-        
-        redeemFeeBps = 25; 
+
+        redeemFeeBps = 25;
     }
 
     // =========================================================================
@@ -148,8 +147,13 @@ contract SyncrateEngine is
         oracleStalenessThreshold = newThreshold;
     }
 
-    function pause() external onlyRole(DEFAULT_ADMIN_ROLE) { _pause(); }
-    function unpause() external onlyRole(DEFAULT_ADMIN_ROLE) { _unpause(); }
+    function pause() external onlyRole(DEFAULT_ADMIN_ROLE) {
+        _pause();
+    }
+
+    function unpause() external onlyRole(DEFAULT_ADMIN_ROLE) {
+        _unpause();
+    }
 
     /// @notice Sweep exactly 40% of a stablecoin balance to the treasury.
     function sweepToTreasury(address token) external onlyRole(DEFAULT_ADMIN_ROLE) {
@@ -167,10 +171,7 @@ contract SyncrateEngine is
     // CROSS-CHAIN RESERVATION
     // =========================================================================
 
-    function reserveCapacity(bytes32 requestId, uint256 sgldAmount) 
-        external 
-        onlyRole(RESERVE_MANAGER_ROLE) 
-    {
+    function reserveCapacity(bytes32 requestId, uint256 sgldAmount) external onlyRole(RESERVE_MANAGER_ROLE) {
         if (sgldAmount == 0) revert SyncrateEngine__ZeroAmount();
         if (reservedCapacity[requestId] != 0) revert SyncrateEngine__AlreadyReserved();
 
@@ -184,10 +185,7 @@ contract SyncrateEngine is
         emit CapacityReserved(requestId, sgldAmount);
     }
 
-    function confirmReservedMint(bytes32 requestId) 
-        external 
-        onlyRole(RESERVE_MANAGER_ROLE) 
-    {
+    function confirmReservedMint(bytes32 requestId) external onlyRole(RESERVE_MANAGER_ROLE) {
         uint256 amount = reservedCapacity[requestId];
         if (amount == 0) revert SyncrateEngine__NoReservation();
 
@@ -197,10 +195,7 @@ contract SyncrateEngine is
         emit ReservationConfirmed(requestId, amount);
     }
 
-    function cancelReservation(bytes32 requestId) 
-        external 
-        onlyRole(RESERVE_MANAGER_ROLE) 
-    {
+    function cancelReservation(bytes32 requestId) external onlyRole(RESERVE_MANAGER_ROLE) {
         uint256 amount = reservedCapacity[requestId];
         if (amount == 0) revert SyncrateEngine__NoReservation();
 
@@ -218,14 +213,14 @@ contract SyncrateEngine is
         if (stablecoinAmount == 0) revert SyncrateEngine__ZeroAmount();
         if (!isAllowedCollateral[tokenAddress]) revert SyncrateEngine__TokenNotAllowed();
 
-        (, int256 price, , uint256 updatedAt, ) = goldPriceFeed.latestRoundData();
+        (, int256 price,, uint256 updatedAt,) = goldPriceFeed.latestRoundData();
         if (price <= 0) revert SyncrateEngine__InvalidOraclePrice();
         if (block.timestamp - updatedAt > oracleStalenessThreshold) revert SyncrateEngine__StaleOraclePrice();
 
         uint256 sgldAmountToMint = (stablecoinAmount * 1e20) / uint256(price);
-        
+
         if (sgldAmountToMint == 0) revert SyncrateEngine__ZeroAmount();
-        
+
         if (sgldToken.totalSupply() + totalReserved + sgldAmountToMint > reserveCap) {
             revert SyncrateEngine__ExceedsReserveCap();
         }
@@ -260,19 +255,15 @@ contract SyncrateEngine is
             emit SGLDRedeemedImmediate(msg.sender, stablecoinAddress, sgldAmount, netOwed, fee);
         } else {
             if (fee > 0) {
-                redemptionQueue.push(RedemptionRequest({
-                    account: FEE_RECIPIENT,
-                    stablecoin: stablecoinAddress,
-                    amountOwed: fee
-                }));
+                redemptionQueue.push(
+                    RedemptionRequest({account: FEE_RECIPIENT, stablecoin: stablecoinAddress, amountOwed: fee})
+                );
             }
-            
-            redemptionQueue.push(RedemptionRequest({
-                account: msg.sender,
-                stablecoin: stablecoinAddress,
-                amountOwed: netOwed
-            }));
-            
+
+            redemptionQueue.push(
+                RedemptionRequest({account: msg.sender, stablecoin: stablecoinAddress, amountOwed: netOwed})
+            );
+
             emit SGLDRedemptionQueued(redemptionQueue.length - 1, msg.sender, stablecoinAddress, sgldAmount, netOwed);
         }
     }
@@ -310,8 +301,8 @@ contract SyncrateEngine is
     // =========================================================================
 
     function getCollateralValueInUsd(uint256 sgldAmount) public view returns (uint256) {
-        (, int256 price, , uint256 updatedAt, ) = goldPriceFeed.latestRoundData();
-        
+        (, int256 price,, uint256 updatedAt,) = goldPriceFeed.latestRoundData();
+
         if (price <= 0) revert SyncrateEngine__InvalidOraclePrice();
         if (block.timestamp - updatedAt > oracleStalenessThreshold) revert SyncrateEngine__StaleOraclePrice();
 
@@ -322,5 +313,6 @@ contract SyncrateEngine is
         return redemptionQueue.length;
     }
 
-    function _authorizeUpgrade(address newImplementation) internal onlyRole(UPGRADER_ROLE) override {}
+    function _authorizeUpgrade(address newImplementation) internal override onlyRole(UPGRADER_ROLE) {}
 }
+

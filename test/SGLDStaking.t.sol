@@ -12,8 +12,15 @@ import {SGLDToken} from "../src/SGLDToken.sol";
 contract MockSGLD is ERC20 {
     bool public fee;
     constructor() ERC20("Test Gold", "SGLD") {}
-    function mint(address to, uint256 amount) external { _mint(to, amount); }
-    function setFee(bool enabled) external { fee = enabled; }
+
+    function mint(address to, uint256 amount) external {
+        _mint(to, amount);
+    }
+
+    function setFee(bool enabled) external {
+        fee = enabled;
+    }
+
     function _update(address from, address to, uint256 amount) internal override {
         if (fee && from != address(0) && to != address(0)) {
             super._update(from, address(0), amount / 100);
@@ -250,7 +257,9 @@ contract SGLDStakingTest is Test {
     }
 
     function testProcessingBoundedAndSnapshotExcludesLaterPositions() public {
-        for (uint256 i; i < 101; ++i) _stake(alice, 1e18, 30);
+        for (uint256 i; i < 101; ++i) {
+            _stake(alice, 1e18, 30);
+        }
         vm.warp(start + 1 days);
         vm.prank(funder);
         uint256 epoch = vault.createEpoch(block.timestamp);
@@ -280,6 +289,37 @@ contract SGLDStakingTest is Test {
         vm.prank(alice);
         vault.withdraw(0, new uint256[](0));
         assertEq(token.balanceOf(address(vault)), 100e18);
+    }
+
+    function testPrincipalBoundAndFullPrecisionLargeReward() public {
+        uint256 cap = vault.MAX_PRINCIPAL();
+        token.mint(alice, cap);
+        _stake(alice, cap, 90);
+        vm.prank(bob);
+        vm.expectRevert(SGLDStaking.PrincipalLimit.selector);
+        vault.stake(1e18, 30);
+        vm.warp(start + 90 days);
+        uint256 epoch = _epoch(block.timestamp);
+        token.mint(funder, cap);
+        _fund(epoch, cap);
+        assertEq(vault.claimable(0, epoch), cap);
+        vm.prank(alice);
+        vault.withdraw(0, _one(epoch));
+        assertEq(token.balanceOf(alice), 1000e18 + cap + cap);
+        assertEq(vault.totalSupply(), 0);
+        assertEq(vault.rewardReserve(), 0);
+    }
+
+    function testClaimBatchLimitDoesNotPreventPrincipalExit() public {
+        _stake(alice, 1e18, 30);
+        vm.warp(start + 30 days);
+        vm.prank(alice);
+        vm.expectRevert(SGLDStaking.InvalidBatch.selector);
+        vault.withdraw(0, new uint256[](33));
+        assertEq(vault.totalPrincipal(), 1e18);
+        vm.prank(alice);
+        vault.withdraw(0, new uint256[](0));
+        assertEq(vault.totalPrincipal(), 0);
     }
 
     function testFeeOnTransferDepositAndFundingRevertAtomically() public {
@@ -320,7 +360,9 @@ contract SGLDStakingTest is Test {
 
     function testExistingSGLDProxyIntegrationAndUnderlyingPause() public {
         SGLDToken implementation = new SGLDToken();
-        SGLDToken real = SGLDToken(address(new ERC1967Proxy(address(implementation), abi.encodeCall(SGLDToken.initialize, (address(this))))));
+        SGLDToken real = SGLDToken(
+            address(new ERC1967Proxy(address(implementation), abi.encodeCall(SGLDToken.initialize, (address(this)))))
+        );
         real.grantRole(real.MINTER_ROLE(), address(this));
         real.mint(alice, 10e18);
         SGLDStaking liveLike = new SGLDStaking(address(real), address(this), funder, pauser);
@@ -340,7 +382,12 @@ contract SGLDStakingTest is Test {
         assertEq(real.balanceOf(alice), 10e18);
     }
 
-    function testFuzz_TimeWeightedAllocationConservesFunding(uint96 rawA, uint96 rawB, uint32 rawDelay, uint96 rawReward) public {
+    function testFuzz_TimeWeightedAllocationConservesFunding(
+        uint96 rawA,
+        uint96 rawB,
+        uint32 rawDelay,
+        uint96 rawReward
+    ) public {
         uint256 a = bound(rawA, 1e18, 100e18);
         uint256 b = bound(rawB, 1e18, 100e18);
         uint256 delay = bound(rawDelay, 1, 29 days);
@@ -374,8 +421,15 @@ contract ReentrantSGLD is ERC20 {
     bool public attempted;
     bytes4 public revertSelector;
     constructor() ERC20("Reentrant Test", "SGLD") {}
-    function setTarget(address value) external { target = value; }
-    function mint(address owner, uint256 value) external { _mint(owner, value); }
+
+    function setTarget(address value) external {
+        target = value;
+    }
+
+    function mint(address owner, uint256 value) external {
+        _mint(owner, value);
+    }
+
     function transferFrom(address from, address to, uint256 amount) public override returns (bool) {
         attempted = true;
         (bool ok, bytes memory result) = target.call(abi.encodeWithSignature("stake(uint256,uint256)", 1e18, 30));
@@ -392,18 +446,24 @@ contract ReentrantSGLD is ERC20 {
 contract StakingHandler is Test {
     MockSGLD public token;
     SGLDStaking public vault;
+
     constructor() {
         token = new MockSGLD();
         vault = new SGLDStaking(address(token), address(this), address(this), address(this));
         token.approve(address(vault), type(uint256).max);
     }
+
     function deposit(uint96 seed, bool longTerm) external {
         if (vault.positionCount() >= 64) return;
         uint256 amount = bound(seed, 1e18, 100e18);
         token.mint(address(this), amount);
         vault.stake(amount, longTerm ? 90 : 30);
     }
-    function advance(uint32 seed) external { vm.warp(block.timestamp + bound(seed, 1, 10 days)); }
+
+    function advance(uint32 seed) external {
+        vm.warp(block.timestamp + bound(seed, 1, 10 days));
+    }
+
     function settle(uint96 seed) external {
         uint256 end = Math.min(block.timestamp, vault.lastEpochEnd() + 90 days);
         if (end <= vault.lastEpochEnd()) return;
@@ -416,6 +476,7 @@ contract StakingHandler is Test {
         token.mint(address(this), amount);
         vault.fundEpoch(id, amount);
     }
+
     function exit(uint256 seed) external {
         uint256 count = vault.positionCount();
         if (count == 0) return;
@@ -424,6 +485,7 @@ contract StakingHandler is Test {
         if (withdrawn || block.timestamp < maturity) return;
         vault.withdraw(id, new uint256[](0));
     }
+
     function collect(uint256 posSeed, uint256 epochSeed) external {
         if (vault.positionCount() == 0 || vault.epochCount() == 0) return;
         uint256 id = posSeed % vault.positionCount();
@@ -437,11 +499,30 @@ contract StakingHandler is Test {
 
 contract SGLDStakingInvariantTest is StdInvariant, Test {
     StakingHandler handler;
-    function setUp() public { handler = new StakingHandler(); targetContract(address(handler)); }
+
+    function setUp() public {
+        handler = new StakingHandler();
+        targetContract(address(handler));
+    }
+
     function invariant_ReceiptsAndFundedLiabilitiesRemainBacked() public view {
         SGLDStaking vault = handler.vault();
         assertEq(vault.totalSupply(), vault.totalPrincipal());
         assertEq(vault.balanceOf(address(handler)), vault.totalPrincipal());
         assertGe(handler.token().balanceOf(address(vault)), vault.totalPrincipal() + vault.rewardReserve());
+        uint256 outstanding;
+        for (uint256 i; i < vault.positionCount(); ++i) {
+            (, uint256 principal,,, bool withdrawn) = vault.positions(i);
+            if (!withdrawn) outstanding += principal;
+        }
+        assertEq(vault.totalPrincipal(), outstanding);
+        uint256 unclaimed;
+        for (uint256 i; i < vault.epochCount(); ++i) {
+            (,,,,, uint256 funded, uint256 claimed,) = vault.epochs(i);
+            assertLe(claimed, funded);
+            unclaimed += funded - claimed;
+        }
+        assertEq(vault.rewardReserve(), unclaimed);
     }
 }
+

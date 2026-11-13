@@ -27,15 +27,8 @@ jobs:
       - name: Show Forge version
         run: forge --version
 
-      - name: Export initial formatter diagnostics
-        run: |
-          forge fmt
-          python3 - <<'PY'
-          import json, pathlib
-          for folder in ('src', 'test'):
-              for path in pathlib.Path(folder).glob('*.sol'):
-                  print('SYNCRATE_FORMAT_JSON=' + json.dumps({'path': str(path), 'content': path.read_text()}))
-          PY
+      - name: Run Forge fmt
+        run: forge fmt --check
 
       - name: Run Forge build
         run: forge build --sizes

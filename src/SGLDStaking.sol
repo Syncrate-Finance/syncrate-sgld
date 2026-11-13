@@ -5,7 +5,9 @@ import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {IERC20Metadata} from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import {AccessControlDefaultAdminRules} from "@openzeppelin/contracts/access/extensions/AccessControlDefaultAdminRules.sol";
+import {
+    AccessControlDefaultAdminRules
+} from "@openzeppelin/contracts/access/extensions/AccessControlDefaultAdminRules.sol";
 import {Pausable} from "@openzeppelin/contracts/utils/Pausable.sol";
 import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
@@ -82,7 +84,9 @@ contract SGLDStaking is ERC20, AccessControlDefaultAdminRules, Pausable, Reentra
         ERC20("Syncrate Yield Gold", "sySGLD")
         AccessControlDefaultAdminRules(2 days, admin)
     {
-        if (asset.code.length == 0 || IERC20Metadata(asset).decimals() != 18) revert InvalidAsset();
+        if (asset.code.length == 0 || IERC20Metadata(asset).decimals() != 18) {
+            revert InvalidAsset();
+        }
         if (funder == address(0) || pauser == address(0)) revert InvalidAsset();
         sgld = IERC20(asset);
         programStart = block.timestamp;
@@ -186,8 +190,7 @@ contract SGLDStaking is ERC20, AccessControlDefaultAdminRules, Pausable, Reentra
         Position storage p = positions[positionId];
         Epoch storage e = epochs[epochId];
         if (block.timestamp < p.maturesAt || !e.finalized || e.totalWeight == 0) return 0;
-        return Math.mulDiv(e.funded, _weight(p, e.start, e.end), e.totalWeight)
-            - claimedRewards[positionId][epochId];
+        return Math.mulDiv(e.funded, _weight(p, e.start, e.end), e.totalWeight) - claimedRewards[positionId][epochId];
     }
 
     function positionWeight(uint256 positionId, uint256 epochId) external view returns (uint256) {
@@ -195,11 +198,21 @@ contract SGLDStaking is ERC20, AccessControlDefaultAdminRules, Pausable, Reentra
         return _weight(positions[positionId], e.start, e.end);
     }
 
-    function positionCount() external view returns (uint256) { return positions.length; }
-    function epochCount() external view returns (uint256) { return epochs.length; }
+    function positionCount() external view returns (uint256) {
+        return positions.length;
+    }
 
-    function pauseDeposits() external onlyRole(PAUSER_ROLE) { _pause(); }
-    function unpauseDeposits() external onlyRole(DEFAULT_ADMIN_ROLE) { _unpause(); }
+    function epochCount() external view returns (uint256) {
+        return epochs.length;
+    }
+
+    function pauseDeposits() external onlyRole(PAUSER_ROLE) {
+        _pause();
+    }
+
+    function unpauseDeposits() external onlyRole(DEFAULT_ADMIN_ROLE) {
+        _unpause();
+    }
 
     function _open(address owner, uint256 amount, uint256 termDays) private returns (uint256 id) {
         if (amount < MINIMUM_STAKE) revert BelowMinimum();
@@ -265,3 +278,4 @@ contract SGLDStaking is ERC20, AccessControlDefaultAdminRules, Pausable, Reentra
         super._update(from, to, amount);
     }
 }
+
