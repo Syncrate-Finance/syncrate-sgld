@@ -6,16 +6,22 @@
 
 ### Owner-confirmed rules
 
-- Minimum deposit: **1 SGLD** (18 decimals).
+- Minimum gross deposit: **1 SGLD** (18 decimals), before the deposit fee.
 - Exactly **30 or 90 days** per deposit; each deposit has a separate position.
-- Mint exactly one sySGLD per SGLD deposited. Receipts cannot be transferred, including through allowances. There is no public receipt burn function.
+- Charge a fixed **0.25% deposit fee**, then mint one sySGLD per SGLD of net principal retained. A 100 SGLD deposit mints 99.75 sySGLD; the minimum 1 SGLD deposit mints 0.9975 sySGLD. Receipts cannot be transferred, including through allowances. There is no public receipt burn function.
 - Only the position owner may exit, at or after maturity. V1 exits complete positions; partial exits are not implemented.
-- Burn the corresponding sySGLD and return SGLD principal. The withdrawal accepts a bounded list of settled reward epochs to pay accrued yield in the same transaction. Passing an empty list permits principal exit without waiting for rewards.
+- Burn the corresponding sySGLD and return SGLD principal less a fixed **0.50% redemption fee** on that principal. Yield is fee-free, whether paid with principal or claimed later. The withdrawal accepts a bounded list of settled reward epochs to pay accrued yield in the same transaction. Passing an empty list permits principal exit without waiting for rewards.
 - Both terms receive the same principal-time weighting, with earning eligibility ending at maturity even if principal remains in the vault.
-- `restake` rolls a complete matured principal into a new 30/90-day position without a token round trip. The old position is closed, its receipts burned, and new receipts minted 1:1. A gap between terms earns no yield. Rewards do not automatically compound.
+- `restake` rolls a complete matured principal into a new 30/90-day position without a token round trip and **without deposit or redemption fees**. The old position is closed, its receipts burned, and new receipts minted 1:1. A position below 1 SGLD net principal from the gross minimum can also roll over. A gap between terms earns no yield. Rewards do not automatically compound.
 - Yield is paid in **existing SGLD supplied by treasury**. Old positions retain separate rights to late interest after withdrawal or restaking.
 
 ### Cash interest and treasury funding
+
+Both fees are paid immediately in SGLD to `0x42f0E74872c77939422f3c6cEb9D62984BaE5b69`, matching the existing engine's FEE_RECIPIENT/TREASURY constant in this repository. Rates and recipient are constants, with no administrative setter. Fees round down to raw token units using full-precision arithmetic. `previewDeposit(grossAmount)` and `previewRedemption(principal)` expose exact net amounts and fees; `DepositFeePaid`/`RedemptionFeePaid` record charges. Treasury funding and standalone yield claims are not fee-bearing.
+
+Example without yield: deposit 100 SGLD, pay 0.25 SGLD, receive 99.75 sySGLD; redeem 99.75 sySGLD after maturity, pay 0.49875 SGLD, receive 99.25125 SGLD. If 1 SGLD yield is funded for the position, it is paid in full, for a total exit payment of 100.25125 SGLD.
+
+sySGLD is not intended for ordinary LP/lending transfers. Non-transferability blocks ERC-20 transfer/transferFrom even after approval, but contract wallets may own positions. It cannot absolutely prevent a third party wrapping a contract-owned position or issuing separate claims; no tx.origin/EOA-only restriction is introduced or universal non-composability promised.
 
 1. Treasury receives counterparty interest offchain and reconciles its earning period.
 2. Treasury converts that payment into backed SGLD through the established mint/purchase process, subject to existing reserve and backing controls. The vault never mints SGLD to manufacture yield.
@@ -30,7 +36,7 @@ Epochs are contiguous half-open intervals `[start,end)`, starting at deployment 
 
 For each immutable position:
 
-`weight = principal × max(0, min(maturity, epochEnd) − max(openedAt, epochStart))`
+`weight = net principal after deposit fee × max(0, min(maturity, epochEnd) − max(openedAt, epochStart))`
 
 Anyone may run `processEpoch` in batches of **1–100 positions**. All eligibility is calculated onchain. The position-count snapshot at epoch creation includes every possible past participant; a later deposit cannot gain a historical entitlement. Closed positions remain in the calculation. Funding is disabled until the entire snapshot is processed, and zero-weight epochs cannot receive funds.
 
@@ -57,21 +63,22 @@ Per-transaction gas is bounded, but aggregate work per epoch is O(all positions 
 
 | Action | Purpose |
 | --- | --- |
-| `stake(amount, termDays)` | Exact SGLD transfer, new position, 1:1 receipt mint |
-| `withdraw(positionId, epochIds)` | Matured complete principal exit plus chosen funded yields |
+| `stake(amount, termDays)` | Gross transfer, deposit fee to treasury, net principal/1:1 receipt mint |
+| `withdraw(positionId, epochIds)` | Matured principal less redemption fee, plus fee-free funded yields |
 | `restake(positionId, termDays)` | New term for matured principal, preserving old yield claims |
 | `claim(positionId, epochIds)` | Funded yield, including late payments after principal exit |
 | `createEpoch(end)` | Funder creates the next elapsed accounting period |
 | `processEpoch(epochId, maxPositions)` | Permissionless deterministic weighting, at most 100 positions |
 | `fundEpoch(epochId, amount)` | Funder transfers existing SGLD into a finalized epoch |
 | `claimable(positionId, epochId)` | Funded entitlement available after position maturity |
+| `previewDeposit`, `previewRedemption` | Exact fee and net-principal quotes |
 | `positions`, `epochs`, counts, `positionWeight` | Indexable history and reconciliation |
 
 Position and epoch IDs start at zero. Frontends/indexers should use `Staked`, `Withdrawn`, `Restaked`, `EpochCreated`, `EpochProgress`, `YieldFunded` and `YieldClaimed` events, and confirm results against coherent contract reads. The staking address is also the sySGLD token address.
 
 ### Frontend work still required
 
-The live staking page remains disabled and is not connected by this change. Wire the verified ABI, exact approvals, simulations, wallet/network guards, signing lifecycle, positions, claims, restaking and minimum deposit after testnet acceptance. Its provisional sySGLD market-cap adapter expects ERC-4626 `asset()`/`convertToAssets()` and **must be replaced** for this receipt model. Do not publish an address into that adapter and assume compatibility.
+The live staking page remains disabled and is not connected by this change. Wire the verified ABI, gross approvals, fee previews/disclosure, net receipt quotes, simulations, wallet/network guards, signing lifecycle, positions, claims, fee-free restaking and gross minimum deposit after testnet acceptance. Its provisional sySGLD market-cap adapter expects ERC-4626 `asset()`/`convertToAssets()` and **must be replaced** for this receipt model. Do not publish an address into that adapter and assume compatibility.
 
 Historical trailing-30-day yield must use earning-period data, not the day cash is injected. APY requires explicitly documented compounding/annualization assumptions; actual distributions do not auto-compound. No invented history, forecast or guaranteed rate belongs in the chart.
 

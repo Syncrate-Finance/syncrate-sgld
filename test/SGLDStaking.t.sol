@@ -77,12 +77,24 @@ contract SGLDStakingTest is Test {
         ids[0] = id;
     }
 
+    function _net(uint256 gross) internal pure returns (uint256) {
+        return gross - Math.mulDiv(gross, 25, 10_000);
+    }
+
+    function _redemption(uint256 principal) internal pure returns (uint256) {
+        return principal - Math.mulDiv(principal, 50, 10_000);
+    }
+
+    function _walletAfterExit(uint256 gross, uint256 yieldPaid) internal pure returns (uint256) {
+        return 1000e18 - gross + _redemption(_net(gross)) + yieldPaid;
+    }
+
     function testMintExactlyOneToOneAndSeparateLocks() public {
         _stake(alice, 1e18, 30);
         _stake(alice, 2e18, 90);
-        assertEq(vault.balanceOf(alice), 3e18);
-        assertEq(vault.totalSupply(), 3e18);
-        assertEq(vault.totalPrincipal(), 3e18);
+        assertEq(vault.balanceOf(alice), _net(3e18));
+        assertEq(vault.totalSupply(), _net(3e18));
+        assertEq(vault.totalPrincipal(), _net(3e18));
         (,,, uint256 first,) = vault.positions(0);
         (,,, uint256 second,) = vault.positions(1);
         assertEq(first, start + 30 days);
@@ -99,6 +111,84 @@ contract SGLDStakingTest is Test {
         assertEq(vault.totalSupply(), 0);
     }
 
+    function testFeeQuotesAndTreasuryPayments() public {
+        address treasury = vault.FEE_RECIPIENT();
+        assertEq(treasury, 0x42f0E74872c77939422f3c6cEb9D62984BaE5b69);
+        (uint256 principal, uint256 entryFee) = vault.previewDeposit(100e18);
+        assertEq(principal, 99.75e18);
+        assertEq(entryFee, 0.25e18);
+        _stake(alice, 100e18, 30);
+        assertEq(vault.balanceOf(alice), 99.75e18);
+        assertEq(token.balanceOf(treasury), 0.25e18);
+        assertEq(token.balanceOf(address(vault)), 99.75e18);
+        vm.warp(start + 30 days);
+        uint256 epoch = _epoch(block.timestamp);
+        _fund(epoch, 1e18);
+        (uint256 principalPaid, uint256 exitFee) = vault.previewRedemption(principal);
+        assertEq(principalPaid, 99.25125e18);
+        assertEq(exitFee, 0.49875e18);
+        vm.prank(alice);
+        vault.withdraw(0, _one(epoch));
+        assertEq(token.balanceOf(treasury), 0.74875e18);
+        assertEq(token.balanceOf(alice), 1000.25125e18);
+        assertEq(vault.totalSupply(), 0);
+        assertEq(vault.rewardReserve(), 0);
+    }
+
+    function testMinimumDepositAndDirectRestakingHaveNoExtraFees() public {
+        _stake(alice, 1e18, 30);
+        assertEq(vault.balanceOf(alice), 0.9975e18);
+        uint256 feeBalance = token.balanceOf(vault.FEE_RECIPIENT());
+        vm.warp(start + 30 days);
+        vm.prank(alice);
+        uint256 id = vault.restake(0, 90);
+        assertEq(token.balanceOf(vault.FEE_RECIPIENT()), feeBalance);
+        assertEq(vault.balanceOf(alice), 0.9975e18);
+        assertEq(vault.totalPrincipal(), 0.9975e18);
+        (, uint256 principal,,, bool withdrawn) = vault.positions(id);
+        assertEq(principal, 0.9975e18);
+        assertFalse(withdrawn);
+        assertEq(token.balanceOf(alice), 999e18);
+    }
+
+    function testSeparateLateClaimAndCombinedClaimPayIdenticalFees() public {
+        _stake(alice, 100e18, 30);
+        _stake(bob, 100e18, 30);
+        vm.warp(start + 30 days);
+        uint256 epoch = _epoch(block.timestamp);
+        _fund(epoch, 2e18);
+        vm.prank(alice);
+        vault.withdraw(0, _one(epoch));
+        vm.prank(bob);
+        vault.withdraw(1, new uint256[](0));
+        uint256 beforeFeeBalance = token.balanceOf(vault.FEE_RECIPIENT());
+        vm.prank(bob);
+        assertEq(vault.claim(1, _one(epoch)), 1e18);
+        assertEq(token.balanceOf(vault.FEE_RECIPIENT()), beforeFeeBalance);
+        assertEq(token.balanceOf(alice), token.balanceOf(bob));
+        assertEq(token.balanceOf(bob), _walletAfterExit(100e18, 1e18));
+    }
+
+    function testGrossApprovalRequiredAndFailedDepositDoesNotPayFee() public {
+        vm.startPrank(alice);
+        token.approve(address(vault), _net(100e18));
+        vm.expectRevert();
+        vault.stake(100e18, 30);
+        vm.stopPrank();
+        assertEq(vault.positionCount(), 0);
+        assertEq(vault.totalSupply(), 0);
+        assertEq(token.balanceOf(vault.FEE_RECIPIENT()), 0);
+    }
+
+    function testFuzz_FeeQuotesConserveSGLD(uint256 gross) public view {
+        (uint256 principal, uint256 entryFee) = vault.previewDeposit(gross);
+        assertEq(entryFee, Math.mulDiv(gross, 25, 10_000));
+        assertEq(principal + entryFee, gross);
+        (uint256 payout, uint256 exitFee) = vault.previewRedemption(principal);
+        assertEq(exitFee, Math.mulDiv(principal, 50, 10_000));
+        assertEq(payout + exitFee, principal);
+    }
+
     function testNoReceiptTransfersOrDelegatedLockBypass() public {
         _stake(alice, 10e18, 30);
         vm.prank(alice);
@@ -109,7 +199,7 @@ contract SGLDStakingTest is Test {
         vm.prank(bob);
         vm.expectRevert(SGLDStaking.NonTransferable.selector);
         vault.transferFrom(alice, bob, 1e18);
-        assertEq(vault.balanceOf(alice), 10e18);
+        assertEq(vault.balanceOf(alice), _net(10e18));
     }
 
     function testStrictMaturityAndOwnerOnlyExit() public {
@@ -124,7 +214,7 @@ contract SGLDStakingTest is Test {
         vault.withdraw(0, new uint256[](0));
         vm.prank(alice);
         vault.withdraw(0, new uint256[](0));
-        assertEq(token.balanceOf(alice), 1000e18);
+        assertEq(token.balanceOf(alice), _walletAfterExit(10e18, 0));
         assertEq(vault.totalSupply(), 0);
         vm.prank(alice);
         vm.expectRevert(SGLDStaking.AlreadyWithdrawn.selector);
@@ -138,18 +228,18 @@ contract SGLDStakingTest is Test {
         vm.warp(start + 30 days);
         uint256 epoch = _epoch(block.timestamp);
         _fund(epoch, 3e18);
-        assertEq(vault.positionWeight(0, epoch), 10e18 * 30 days);
-        assertEq(vault.positionWeight(1, epoch), 10e18 * 15 days);
+        assertEq(vault.positionWeight(0, epoch), _net(10e18) * 30 days);
+        assertEq(vault.positionWeight(1, epoch), _net(10e18) * 15 days);
         vm.prank(alice);
         vault.withdraw(0, _one(epoch));
-        assertEq(token.balanceOf(alice), 1002e18);
+        assertEq(token.balanceOf(alice), _walletAfterExit(10e18, 2e18));
         assertEq(vault.rewardReserve(), 1e18);
         assertEq(vault.claimable(1, epoch), 0);
         vm.warp(start + 45 days);
         assertEq(vault.claimable(1, epoch), 1e18);
         vm.prank(bob);
         vault.withdraw(1, _one(epoch));
-        assertEq(token.balanceOf(bob), 1001e18);
+        assertEq(token.balanceOf(bob), _walletAfterExit(10e18, 1e18));
         assertEq(vault.rewardReserve(), 0);
     }
 
@@ -171,7 +261,7 @@ contract SGLDStakingTest is Test {
         vm.prank(alice);
         assertEq(vault.claim(0, duplicates), 2e18);
         assertEq(vault.claimable(0, epoch), 0);
-        assertEq(token.balanceOf(alice), 1003e18);
+        assertEq(token.balanceOf(alice), _walletAfterExit(10e18, 3e18));
     }
 
     function testMaturityStopsWeightEvenWithoutWithdrawal() public {
@@ -190,12 +280,12 @@ contract SGLDStakingTest is Test {
         vm.prank(alice);
         uint256 newId = vault.restake(0, 90);
         assertEq(newId, 1);
-        assertEq(vault.balanceOf(alice), 10e18);
+        assertEq(vault.balanceOf(alice), _net(10e18));
         assertEq(token.balanceOf(alice), 990e18);
         vm.warp(start + 50 days);
         uint256 epoch = _epoch(block.timestamp);
-        assertEq(vault.positionWeight(0, epoch), 10e18 * 30 days);
-        assertEq(vault.positionWeight(1, epoch), 10e18 * 10 days);
+        assertEq(vault.positionWeight(0, epoch), _net(10e18) * 30 days);
+        assertEq(vault.positionWeight(1, epoch), _net(10e18) * 10 days);
         _fund(epoch, 4e18);
         vm.prank(alice);
         assertEq(vault.claim(0, _one(epoch)), 3e18);
@@ -216,7 +306,7 @@ contract SGLDStakingTest is Test {
         _fund(epoch, 1e18);
         vm.prank(alice);
         vault.withdraw(0, _one(epoch));
-        assertEq(token.balanceOf(alice), 1001e18);
+        assertEq(token.balanceOf(alice), _walletAfterExit(10e18, 1e18));
     }
 
     function testFundingRequiresFinalizationAndEligibleWeight() public {
@@ -273,15 +363,15 @@ contract SGLDStakingTest is Test {
         vault.processEpoch(epoch, 100);
         (,,,, uint256 weight,,, bool finalized) = vault.epochs(epoch);
         assertTrue(finalized);
-        assertEq(weight, 101e18 * 1 days);
+        assertEq(weight, 101 * _net(1e18) * 1 days);
         assertEq(vault.positionWeight(101, epoch), 0);
     }
 
     function testUnsolicitedDonationNeverMintsReceiptsOrFundsRewards() public {
         _stake(alice, 10e18, 30);
         token.mint(address(vault), 100e18);
-        assertEq(vault.totalSupply(), 10e18);
-        assertEq(vault.totalPrincipal(), 10e18);
+        assertEq(vault.totalSupply(), _net(10e18));
+        assertEq(vault.totalPrincipal(), _net(10e18));
         assertEq(vault.rewardReserve(), 0);
         vm.warp(start + 30 days);
         uint256 epoch = _epoch(block.timestamp);
@@ -293,8 +383,10 @@ contract SGLDStakingTest is Test {
 
     function testPrincipalBoundAndFullPrecisionLargeReward() public {
         uint256 cap = vault.MAX_PRINCIPAL();
-        token.mint(alice, cap);
-        _stake(alice, cap, 90);
+        uint256 gross = Math.mulDiv(cap, 10_000, 9975);
+        token.mint(alice, gross);
+        _stake(alice, gross, 90);
+        assertEq(vault.totalPrincipal(), cap);
         vm.prank(bob);
         vm.expectRevert(SGLDStaking.PrincipalLimit.selector);
         vault.stake(1e18, 30);
@@ -305,7 +397,7 @@ contract SGLDStakingTest is Test {
         assertEq(vault.claimable(0, epoch), cap);
         vm.prank(alice);
         vault.withdraw(0, _one(epoch));
-        assertEq(token.balanceOf(alice), 1000e18 + cap + cap);
+        assertEq(token.balanceOf(alice), 1000e18 + _redemption(cap) + cap);
         assertEq(vault.totalSupply(), 0);
         assertEq(vault.rewardReserve(), 0);
     }
@@ -316,7 +408,7 @@ contract SGLDStakingTest is Test {
         vm.prank(alice);
         vm.expectRevert(SGLDStaking.InvalidBatch.selector);
         vault.withdraw(0, new uint256[](33));
-        assertEq(vault.totalPrincipal(), 1e18);
+        assertEq(vault.totalPrincipal(), _net(1e18));
         vm.prank(alice);
         vault.withdraw(0, new uint256[](0));
         assertEq(vault.totalPrincipal(), 0);
@@ -340,7 +432,7 @@ contract SGLDStakingTest is Test {
         vm.prank(alice);
         vm.expectRevert(SGLDStaking.UnsupportedTransfer.selector);
         vault.withdraw(0, new uint256[](0));
-        assertEq(vault.totalPrincipal(), 10e18);
+        assertEq(vault.totalPrincipal(), _net(10e18));
     }
 
     function testReentrantTokenCannotEnterStakeDuringTransfer() public {
@@ -354,7 +446,7 @@ contract SGLDStakingTest is Test {
         vm.stopPrank();
         assertTrue(attackerToken.attempted());
         assertEq(attackerToken.revertSelector(), bytes4(keccak256("ReentrancyGuardReentrantCall()")));
-        assertEq(guarded.totalSupply(), 1e18);
+        assertEq(guarded.totalSupply(), _net(1e18));
         assertEq(guarded.positionCount(), 1);
     }
 
@@ -375,11 +467,11 @@ contract SGLDStakingTest is Test {
         vm.prank(alice);
         vm.expectRevert();
         liveLike.withdraw(0, new uint256[](0));
-        assertEq(liveLike.totalPrincipal(), 10e18);
+        assertEq(liveLike.totalPrincipal(), _net(10e18));
         real.unpause();
         vm.prank(alice);
         liveLike.withdraw(0, new uint256[](0));
-        assertEq(real.balanceOf(alice), 10e18);
+        assertEq(real.balanceOf(alice), _redemption(_net(10e18)));
     }
 
     function testFuzz_TimeWeightedAllocationConservesFunding(
@@ -399,8 +491,8 @@ contract SGLDStakingTest is Test {
         uint256 epoch = _epoch(block.timestamp);
         _fund(epoch, reward);
         vm.warp(start + 120 days);
-        uint256 wa = a * 30 days;
-        uint256 wb = b * (30 days - delay);
+        uint256 wa = _net(a) * 30 days;
+        uint256 wb = _net(b) * (30 days - delay);
         uint256 expectedA = Math.mulDiv(reward, wa, wa + wb);
         uint256 expectedB = Math.mulDiv(reward, wb, wa + wb);
         assertEq(vault.claimable(0, epoch), expectedA);
@@ -446,6 +538,7 @@ contract ReentrantSGLD is ERC20 {
 contract StakingHandler is Test {
     MockSGLD public token;
     SGLDStaking public vault;
+    uint256 public expectedFees;
 
     constructor() {
         token = new MockSGLD();
@@ -458,6 +551,7 @@ contract StakingHandler is Test {
         uint256 amount = bound(seed, 1e18, 100e18);
         token.mint(address(this), amount);
         vault.stake(amount, longTerm ? 90 : 30);
+        expectedFees += Math.mulDiv(amount, 25, 10_000);
     }
 
     function advance(uint32 seed) external {
@@ -481,9 +575,19 @@ contract StakingHandler is Test {
         uint256 count = vault.positionCount();
         if (count == 0) return;
         uint256 id = seed % count;
-        (,,, uint256 maturity, bool withdrawn) = vault.positions(id);
+        (, uint256 principal,, uint256 maturity, bool withdrawn) = vault.positions(id);
         if (withdrawn || block.timestamp < maturity) return;
         vault.withdraw(id, new uint256[](0));
+        expectedFees += Math.mulDiv(principal, 50, 10_000);
+    }
+
+    function roll(uint256 seed, bool longTerm) external {
+        uint256 count = vault.positionCount();
+        if (count == 0 || count >= 64) return;
+        uint256 id = seed % count;
+        (,,, uint256 maturity, bool withdrawn) = vault.positions(id);
+        if (withdrawn || block.timestamp < maturity) return;
+        vault.restake(id, longTerm ? 90 : 30);
     }
 
     function collect(uint256 posSeed, uint256 epochSeed) external {
@@ -523,6 +627,7 @@ contract SGLDStakingInvariantTest is StdInvariant, Test {
             unclaimed += funded - claimed;
         }
         assertEq(vault.rewardReserve(), unclaimed);
+        assertEq(handler.token().balanceOf(vault.FEE_RECIPIENT()), handler.expectedFees());
     }
 }
 

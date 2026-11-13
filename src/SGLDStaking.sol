@@ -21,6 +21,10 @@ contract SGLDStaking is ERC20, AccessControlDefaultAdminRules, Pausable, Reentra
     bytes32 public constant FUNDER_ROLE = keccak256("FUNDER_ROLE");
     bytes32 public constant PAUSER_ROLE = keccak256("PAUSER_ROLE");
     uint256 public constant MINIMUM_STAKE = 1e18;
+    uint256 public constant DEPOSIT_FEE_BPS = 25;
+    uint256 public constant REDEMPTION_FEE_BPS = 50;
+    uint256 public constant BPS_DENOMINATOR = 10_000;
+    address public constant FEE_RECIPIENT = 0x42f0E74872c77939422f3c6cEb9D62984BaE5b69;
     uint256 public constant MAX_PRINCIPAL = type(uint192).max;
     uint256 public constant MAX_EPOCH_DURATION = 90 days;
     uint256 public constant MAX_PROCESS_BATCH = 100;
@@ -79,6 +83,8 @@ contract SGLDStaking is ERC20, AccessControlDefaultAdminRules, Pausable, Reentra
     event EpochProgress(uint256 indexed epochId, uint256 cursor, uint256 totalWeight, bool finalized);
     event YieldFunded(uint256 indexed epochId, address indexed funder, uint256 amount, uint256 cumulativeFunding);
     event YieldClaimed(address indexed owner, uint256 indexed positionId, uint256 indexed epochId, uint256 amount);
+    event DepositFeePaid(address indexed owner, uint256 indexed positionId, uint256 grossAmount, uint256 fee);
+    event RedemptionFeePaid(address indexed owner, uint256 indexed positionId, uint256 principal, uint256 fee);
 
     constructor(address asset, address admin, address funder, address pauser)
         ERC20("Syncrate Yield Gold", "sySGLD")
@@ -96,10 +102,14 @@ contract SGLDStaking is ERC20, AccessControlDefaultAdminRules, Pausable, Reentra
     }
 
     function stake(uint256 amount, uint256 termDays) external nonReentrant whenNotPaused returns (uint256 id) {
+        if (amount < MINIMUM_STAKE) revert BelowMinimum();
         _assertSolvent();
-        id = _open(msg.sender, amount, termDays);
+        (uint256 principal, uint256 fee) = previewDeposit(amount);
+        id = _open(msg.sender, principal, termDays);
         _receiveExact(msg.sender, amount);
+        if (fee != 0) _sendExact(FEE_RECIPIENT, fee);
         _assertSolvent();
+        emit DepositFeePaid(msg.sender, id, amount, fee);
     }
 
     /// @notice Close a complete matured position and optionally collect up to 32 finalized epochs.
@@ -112,8 +122,11 @@ contract SGLDStaking is ERC20, AccessControlDefaultAdminRules, Pausable, Reentra
         totalPrincipal -= p.principal;
         _burn(msg.sender, p.principal);
         uint256 yieldPaid = _collect(positionId, epochIds);
-        _sendExact(msg.sender, p.principal + yieldPaid);
+        (uint256 principalPaid, uint256 fee) = previewRedemption(p.principal);
+        if (fee != 0) _sendExact(FEE_RECIPIENT, fee);
+        _sendExact(msg.sender, principalPaid + yieldPaid);
         _assertSolvent();
+        emit RedemptionFeePaid(msg.sender, positionId, p.principal, fee);
         emit Withdrawn(msg.sender, positionId, p.principal, yieldPaid);
     }
 
@@ -198,6 +211,18 @@ contract SGLDStaking is ERC20, AccessControlDefaultAdminRules, Pausable, Reentra
         return _weight(positions[positionId], e.start, e.end);
     }
 
+    /// @notice Quote net principal/receipts and the fee on a gross SGLD deposit. Minimum checked by stake().
+    function previewDeposit(uint256 grossAmount) public pure returns (uint256 principal, uint256 fee) {
+        fee = Math.mulDiv(grossAmount, DEPOSIT_FEE_BPS, BPS_DENOMINATOR);
+        principal = grossAmount - fee;
+    }
+
+    /// @notice Quote net principal payout and redemption fee. Yield is not included or charged.
+    function previewRedemption(uint256 principal) public pure returns (uint256 principalPaid, uint256 fee) {
+        fee = Math.mulDiv(principal, REDEMPTION_FEE_BPS, BPS_DENOMINATOR);
+        principalPaid = principal - fee;
+    }
+
     function positionCount() external view returns (uint256) {
         return positions.length;
     }
@@ -215,7 +240,7 @@ contract SGLDStaking is ERC20, AccessControlDefaultAdminRules, Pausable, Reentra
     }
 
     function _open(address owner, uint256 amount, uint256 termDays) private returns (uint256 id) {
-        if (amount < MINIMUM_STAKE) revert BelowMinimum();
+        if (amount == 0) revert BelowMinimum();
         if (termDays != 30 && termDays != 90) revert InvalidTerm();
         if (amount > MAX_PRINCIPAL - totalPrincipal) revert PrincipalLimit();
         totalPrincipal += amount;
