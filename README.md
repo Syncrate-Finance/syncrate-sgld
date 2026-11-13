@@ -4,6 +4,8 @@
 
 `src/SGLDStaking.sol` is a separate, non-upgradeable staking vault **and** the ERC-20 sySGLD receipt token at the same address. It does not upgrade SGLDToken or SyncrateEngine and needs no SGLD minting role.
 
+The constructor starts **paused**. Only the default admin can activate deposits with `unpauseDeposits` after verification and frontend acceptance. The deployment script does not unpause, fund rewards, stake tokens or grant any roles on existing SGLD/engine contracts.
+
 ### Owner-confirmed rules
 
 - Minimum gross deposit: **1 SGLD** (18 decimals), before the deposit fee.
@@ -95,3 +97,17 @@ forge test -vvv
 The new suite covers exact receipts, both terms, minimums, ownership/lock bypass, historical weighting, eligibility ending at maturity, restaking gaps, late funding after exit, additive funding and duplicate claims, deposit pause, unauthorized funding, epoch constraints, bounded processing/snapshot completeness, direct donations, transfer-fee rejection, reentrancy and the existing SGLD UUPS-proxy interface/underlying pause. Fuzz tests independently calculate allocations and check rounding conservation. Stateful invariants check receipt/principal equality and funded solvency across deposits, time advances, settlement, exits and claims.
 
 Production deployment, actual Base proxy/ABI verification, treasury/multisig configuration, independent security review, testnet/fork lifecycle acceptance and operational funding monitoring remain release gates. No deployment or privileged transaction is authorized by these instructions.
+
+## Owner-selected paused Base deployment
+
+The owner selected Base mainnet (8453), and `0x9C8671eC3e032BbDb0A9B7577468763dc553DA40` for default admin, yield funder and pauser. `script/DeploySGLDStaking.s.sol` pins that configuration, verifies chain ID and existing SGLD/engine identity/fee recipient, and creates one paused vault/receipt token. It deliberately does not activate deposits. The script expects the same address as deployment sender; use a matching encrypted Foundry account.
+
+Dry-run, with no signing key and no transaction sent:
+
+```sh
+forge script script/DeploySGLDStaking.s.sol:DeploySGLDStaking --rpc-url https://mainnet.base.org --sender 0x9C8671eC3e032BbDb0A9B7577468763dc553DA40 -vv
+```
+
+The final keystore/broadcast command belongs in the owner's local terminal after reviewing the dry-run and gas budget. Do not put a private key or keystore password in source, chat, GitHub Actions or command-line arguments. An encrypted account alias is supplied with `--account`; Foundry prompts for its password locally. Broadcasting costs Base ETH and must be deliberately authorized by the signer. No automatic CI broadcast exists.
+
+`test/fork/SGLDStakingBaseFork.t.sol` exercises the real SGLD implementation on a disposable Base fork, with local-only token balance setup and time advancement. It verifies paused deployment, fees, matured principal exit and late claims. It sends no mainnet transactions. A working public Base endpoint or `BASE_FORK_RPC_URL` is required for this test; a failed fork must not be treated as a completed deployment rehearsal.

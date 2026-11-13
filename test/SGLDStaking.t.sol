@@ -44,6 +44,7 @@ contract SGLDStakingTest is Test {
         start = block.timestamp;
         token = new MockSGLD();
         vault = new SGLDStaking(address(token), address(this), funder, pauser);
+        vault.unpauseDeposits();
         address[3] memory users = [alice, bob, funder];
         for (uint256 i; i < users.length; ++i) {
             token.mint(users[i], 1000e18);
@@ -99,6 +100,23 @@ contract SGLDStakingTest is Test {
         (,,, uint256 second,) = vault.positions(1);
         assertEq(first, start + 30 days);
         assertEq(second, start + 90 days);
+    }
+
+    function testDeploymentStartsPausedUntilAdminActivation() public {
+        SGLDStaking fresh = new SGLDStaking(address(token), address(this), funder, pauser);
+        assertTrue(fresh.paused());
+        vm.prank(alice);
+        token.approve(address(fresh), 1e18);
+        vm.prank(alice);
+        vm.expectRevert();
+        fresh.stake(1e18, 30);
+        vm.prank(bob);
+        vm.expectRevert();
+        fresh.unpauseDeposits();
+        fresh.unpauseDeposits();
+        vm.prank(alice);
+        fresh.stake(1e18, 30);
+        assertEq(fresh.balanceOf(alice), 0.9975e18);
     }
 
     function testMinimumAndTermsAreEnforcedOnchain() public {
@@ -438,6 +456,7 @@ contract SGLDStakingTest is Test {
     function testReentrantTokenCannotEnterStakeDuringTransfer() public {
         ReentrantSGLD attackerToken = new ReentrantSGLD();
         SGLDStaking guarded = new SGLDStaking(address(attackerToken), address(this), funder, pauser);
+        guarded.unpauseDeposits();
         attackerToken.setTarget(address(guarded));
         attackerToken.mint(alice, 1e18);
         vm.startPrank(alice);
@@ -458,6 +477,7 @@ contract SGLDStakingTest is Test {
         real.grantRole(real.MINTER_ROLE(), address(this));
         real.mint(alice, 10e18);
         SGLDStaking liveLike = new SGLDStaking(address(real), address(this), funder, pauser);
+        liveLike.unpauseDeposits();
         vm.startPrank(alice);
         real.approve(address(liveLike), 10e18);
         liveLike.stake(10e18, 30);
@@ -543,6 +563,7 @@ contract StakingHandler is Test {
     constructor() {
         token = new MockSGLD();
         vault = new SGLDStaking(address(token), address(this), address(this), address(this));
+        vault.unpauseDeposits();
         token.approve(address(vault), type(uint256).max);
     }
 

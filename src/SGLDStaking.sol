@@ -99,6 +99,7 @@ contract SGLDStaking is ERC20, AccessControlDefaultAdminRules, Pausable, Reentra
         lastEpochEnd = block.timestamp;
         _grantRole(FUNDER_ROLE, funder);
         _grantRole(PAUSER_ROLE, pauser);
+        _pause();
     }
 
     function stake(uint256 amount, uint256 termDays) external nonReentrant whenNotPaused returns (uint256 id) {
