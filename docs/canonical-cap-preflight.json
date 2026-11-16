@@ -1,0 +1,26 @@
+{
+  "block": "58110779",
+  "observedAt": "2026-11-16T07:02:12.844Z",
+  "roles": [
+    {
+      "account": "0x9C8671eC3e032BbDb0A9B7577468763dc553DA40",
+      "admin": true,
+      "minter": false
+    },
+    {
+      "account": "0x42f0E74872c77939422f3c6cEb9D62984BaE5b69",
+      "admin": false,
+      "minter": false
+    },
+    {
+      "account": "0x37c0078D297243A22ac247cd93f1cafed9Dbe461",
+      "admin": false,
+      "minter": true
+    }
+  ],
+  "implementation": "0x00000000000000000000000021d4daf073a381631356513072dfd3a6372ccbe8",
+  "initializer": "0x0000000000000000000000000000000000000000000000000000000000000004",
+  "supply": "457522343430630543",
+  "completeRoleInventory": false,
+  "broadcast": false
+}
