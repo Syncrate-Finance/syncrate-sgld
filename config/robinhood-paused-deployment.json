@@ -1,6 +1,6 @@
 {
-  "schemaVersion": 1,
-  "status": "Development candidate for paused deployment review; no live deployment approved or performed",
+  "schemaVersion": 2,
+  "status": "Fixed-cap implementation deployed and proxy upgraded by owner; adjustable-cap correction candidate not deployed",
   "confirmedOn": "2026-11-16",
   "deployer": "0x9C8671eC3e032BbDb0A9B7577468763dc553DA40",
   "base": {
@@ -18,7 +18,9 @@
     "initialMaxPerOperation": "0",
     "initialMaxOutstandingBacking": "0",
     "initialPeerBound": false,
-    "initialMinterRoleGranted": false
+    "initialMinterRoleGranted": false,
+    "fixedCapImplementation": "0x7A930a4B191A6e88281681380426C821C5d0B19E",
+    "fixedCapUpgradeTransaction": "0x4f56d269440774171207f8bf28695dc9f5e8c654851a563c17650de0f57e031d"
   },
   "robinhood": {
     "chainId": 4663,
@@ -39,5 +41,14 @@
   "candidateMessageReceiveValue": "0",
   "securityProfileApprovedForActivation": false,
   "rolloutAmountsApprovedForActivation": false,
-  "actualNewDeploymentAddresses": null
+  "actualNewDeploymentAddresses": null,
+  "inventory": {
+    "initialRaw": "193000000000000000000",
+    "permanentFixedCeiling": false,
+    "authority": "Base canonical token DEFAULT_ADMIN_ROLE",
+    "changePolicy": "Increase only after verified additional backing; emits old/new caps; does not mint",
+    "newInventoryIncreaseApproved": false,
+    "correctionImplementation": null
+  },
+  "publicRhMintingAtFrontendLaunch": true
 }

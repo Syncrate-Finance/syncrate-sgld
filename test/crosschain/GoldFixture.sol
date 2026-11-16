@@ -11,7 +11,7 @@ import {
     Origin
 } from "@layerzerolabs/lz-evm-protocol-v2/contracts/interfaces/ILayerZeroEndpointV2.sol";
 import {SGLDToken} from "../../src/SGLDToken.sol";
-import {SGLDTokenCapped} from "../../src/SGLDTokenCapped.sol";
+import {SGLDTokenAdjustableCap} from "../../src/SGLDTokenAdjustableCap.sol";
 import {GoldMailbox} from "../../src/crosschain/GoldMailbox.sol";
 import {GoldMessages as G} from "../../src/crosschain/GoldMessages.sol";
 import {GoldSettlementOracle} from "../../src/crosschain/GoldSettlementOracle.sol";
@@ -153,7 +153,7 @@ contract GoldFeedMock {
 abstract contract GoldFixture is Test {
     GoldEndpointMock baseEndpoint;
     GoldEndpointMock remoteEndpoint;
-    SGLDTokenCapped canonical;
+    SGLDTokenAdjustableCap canonical;
     BaseGoldController base;
     RobinhoodGold remote;
     GoldUSDGMock usdg;
@@ -168,12 +168,14 @@ abstract contract GoldFixture is Test {
     function setUp() public virtual {
         vm.warp(1_800_000_000);
         vm.deal(address(this), 100 ether);
-        canonical = SGLDTokenCapped(
+        canonical = SGLDTokenAdjustableCap(
             address(
-                new ERC1967Proxy(address(new SGLDTokenCapped()), abi.encodeCall(SGLDToken.initialize, (address(this))))
+                new ERC1967Proxy(
+                    address(new SGLDTokenAdjustableCap()), abi.encodeCall(SGLDToken.initialize, (address(this)))
+                )
             )
         );
-        canonical.initializeGlobalSupplyCap();
+        canonical.initializeAdjustableSupplyCap();
         canonical.grantRole(canonical.MINTER_ROLE(), address(this));
         canonical.mint(alice, 10e18);
         goldFeed = new GoldFeedMock(8, 4000e8);
@@ -242,6 +244,6 @@ abstract contract GoldFixture is Test {
         assertLe(remote.totalSupply(), base.backingLiability());
         assertLe(base.backingLiability(), canonical.totalSupply());
         assertGe(canonical.balanceOf(address(base)), base.backingLiability());
-        assertLe(canonical.totalSupply(), 193e18);
+        assertLe(canonical.totalSupply(), canonical.MAX_CANONICAL_SUPPLY());
     }
 }

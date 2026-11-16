@@ -8,6 +8,7 @@ import {SGLDTokenCapped} from "../../src/SGLDTokenCapped.sol";
 contract DeployCanonicalCap is GoldDeploymentProfile {
     function run() external returns (SGLDTokenCapped implementation) {
         _baseChecks();
+        require(SGLDTokenCapped(ASSET).totalSupply() <= 193e18, "Existing supply above legacy cap");
         require(_implementation(ASSET) == LEGACY_IMPLEMENTATION, "Base implementation changed; review first");
         vm.startBroadcast(DEPLOYER);
         implementation = new SGLDTokenCapped();

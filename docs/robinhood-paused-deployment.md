@@ -1,5 +1,8 @@
 # Paused deployment candidate
 
+> Inventory clarification, November 16: 193 is current backing, not a permanent ceiling. The completed fixed-cap upgrade is followed by the adjustable-inventory correction in [robinhood-adjustable-inventory.md](robinhood-adjustable-inventory.md). Any fixed-193 claims or deployment commands below describe the earlier candidate and are superseded for the next release.
+
+
 This package prepares the owner-selected Base/Robinhood deployment. It does not authorize or perform a live deployment, token upgrade, minter grant or activation. All rehearsals are disposable fork tests. Actual new addresses are unknown until confirmed deployment receipts; addresses printed by dry runs are predictions, not deployed contracts.
 
 ## Confirmed public inputs

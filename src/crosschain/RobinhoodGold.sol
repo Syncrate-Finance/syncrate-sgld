@@ -11,7 +11,6 @@ import {GoldFeedReader, IGoldAggregator} from "./GoldFeedReader.sol";
 /// @notice Development remote token AND USDG intent engine. Only authenticated Base results mint.
 /// @dev No owner mint, timeout refund, liquidity sweep or separate local mint role.
 contract RobinhoodGold is GoldMailbox, ERC20 {
-    uint256 public constant MAX_SUPPLY = 193e18;
     /// @notice Explicit target-chain treasury; never assumes a Base contract exists on Robinhood.
     address public immutable FEE_RECIPIENT;
     IERC20Metadata public immutable usdg;
@@ -222,7 +221,9 @@ contract RobinhoodGold is GoldMailbox, ERC20 {
     }
 
     function _credit(address recipient, uint256 amount) private {
-        if (amount > MAX_SUPPLY - totalSupply()) revert InvalidTransfer();
+        // Called only for authenticated Base backing credits, accepted mints or
+        // rejected redemption restorations. Base's inventory cap is authoritative;
+        // a second fixed remote ceiling would strand valid credits after increases.
         _mint(recipient, amount);
     }
 }

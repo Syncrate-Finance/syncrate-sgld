@@ -1,5 +1,8 @@
 # Route and price verification — November 16, 2026
 
+> Inventory clarification, November 16: 193 is current backing, not a permanent ceiling. The completed fixed-cap upgrade is followed by the adjustable-inventory correction in [robinhood-adjustable-inventory.md](robinhood-adjustable-inventory.md). Any fixed-193 claims or deployment commands below describe the earlier candidate and are superseded for the next release.
+
+
 Development only. No endpoint configuration, token upgrade, deployment or role grant was broadcast. The owner explicitly approved the Robinhood USDG price-snapshot policy for development on this date. The draft ABI/protocol is now version2; no version1 core was deployed.
 
 ## Verified public sources and read-only state

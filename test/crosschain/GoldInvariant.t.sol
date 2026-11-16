@@ -5,14 +5,14 @@ import {StdInvariant} from "forge-std/StdInvariant.sol";
 import {Test} from "forge-std/Test.sol";
 import {GoldFixture, GoldEndpointMock, GoldUSDGMock, GoldFeedMock} from "./GoldFixture.sol";
 import {GoldMessages as G} from "../../src/crosschain/GoldMessages.sol";
-import {SGLDTokenCapped} from "../../src/SGLDTokenCapped.sol";
+import {SGLDTokenAdjustableCap} from "../../src/SGLDTokenAdjustableCap.sol";
 import {BaseGoldController} from "../../src/crosschain/BaseGoldController.sol";
 import {RobinhoodGold} from "../../src/crosschain/RobinhoodGold.sol";
 import {GoldMailbox} from "../../src/crosschain/GoldMailbox.sol";
 
 /// @dev Ghost claims track actual pending economic rights, not just E minus remote supply.
 contract GoldCrosschainHandler is Test {
-    SGLDTokenCapped canonical;
+    SGLDTokenAdjustableCap canonical;
     BaseGoldController base;
     RobinhoodGold remote;
     GoldUSDGMock usdg;
@@ -34,7 +34,7 @@ contract GoldCrosschainHandler is Test {
     uint256 public deliveries;
 
     constructor(
-        SGLDTokenCapped c,
+        SGLDTokenAdjustableCap c,
         BaseGoldController b,
         RobinhoodGold r,
         GoldUSDGMock u,
@@ -63,6 +63,13 @@ contract GoldCrosschainHandler is Test {
         (, bytes32 messageId) = base.bridgeToRobinhood(amount, address(this));
         pendingCredits += int256(amount);
         messages.push(Entry(true, messageId));
+    }
+
+    function increaseInventory(uint256 increment) external {
+        uint256 current = canonical.MAX_CANONICAL_SUPPLY();
+        if (current >= 1000e18) return;
+        increment = bound(increment, 1, 1000e18 - current);
+        canonical.increaseGlobalSupplyCap(current + increment);
     }
 
     function bridgeOut(uint256 amount) external {
@@ -180,6 +187,7 @@ contract GoldCrosschainInvariant is StdInvariant, GoldFixture {
             new GoldCrosschainHandler(canonical, base, remote, usdg, baseEndpoint, remoteEndpoint, goldFeed, usdgFeed);
         canonical.mint(address(handler), 20e18);
         canonical.grantRole(canonical.MINTER_ROLE(), address(handler));
+        canonical.grantRole(canonical.DEFAULT_ADMIN_ROLE(), address(handler)); // test-only inventory authority
         usdg.mint(address(handler), 10_000_000e6);
         vm.deal(address(handler), 1 ether);
         targetContract(address(handler));
@@ -194,7 +202,7 @@ contract GoldCrosschainInvariant is StdInvariant, GoldFixture {
         assertBacking();
         uint256 economic = canonical.totalSupply() - base.backingLiability() + remote.totalSupply() + inFlight;
         assertEq(economic, canonical.totalSupply());
-        assertLe(economic, 193e18);
+        assertLe(economic, canonical.MAX_CANONICAL_SUPPLY());
     }
 
     function invariantPendingRefundAndAllocatedUSDGCannotBeSpentByQueue() public view {

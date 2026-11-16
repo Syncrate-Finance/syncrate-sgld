@@ -37,7 +37,6 @@ abstract contract GoldDeploymentProfile is Script {
         require(IERC20Metadata(ASSET).decimals() == 18, "SGLD decimals mismatch");
         require(keccak256(bytes(IERC20Metadata(ASSET).symbol())) == keccak256("SGLD"), "SGLD identity mismatch");
         require(SGLDToken(ASSET).hasRole(bytes32(0), ADMIN), "Expected Base upgrade admin missing");
-        require(SGLDToken(ASSET).totalSupply() <= 193e18, "Existing supply above cap");
         require(IExistingGoldEngine(ENGINE).sgldToken() == ASSET, "Engine asset mismatch");
         require(IExistingGoldEngine(ENGINE).totalReserved() == 0, "Review legacy reservations first");
     }

@@ -1,5 +1,8 @@
 # SGLD on Robinhood Chain: proposed global supply architecture
 
+> Inventory clarification, November 16: 193 is current backing, not a permanent ceiling. The completed fixed-cap upgrade is followed by the adjustable-inventory correction in [robinhood-adjustable-inventory.md](robinhood-adjustable-inventory.md). Any fixed-193 claims or deployment commands below describe the earlier candidate and are superseded for the next release.
+
+
 Status: owner APPROVED this architecture for development on November 15, 2026. Phase 1 is the canonical token cap and upgrade compatibility tests. Live upgrades, deployments and role changes are NOT authorized. This document describes the complete target design; it does not imply that the cross-chain system has already been implemented.
 
 November 16 development update: owner approved reading actual USDG/USD on Robinhood and authenticating its immutable snapshot to Base, where gold pricing remains. Feed age is capped at24hours and request lifetime at15minutes, without a constant-peg fallback. This supersedes the earlier candidate requiring both feeds on Base. See `robinhood-route-verification.md` for the current version2 implementation, live read-only evidence and remaining release gates.
