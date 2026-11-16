@@ -1,0 +1,11 @@
+{
+  "schemaVersion": 1,
+  "purpose": "Approved input for deployment preparation; not a live contract configuration",
+  "chainId": 4663,
+  "treasury": "0x42f0E74872c77939422f3c6cEb9D62984BaE5b69",
+  "ownerSelectedTreasury": true,
+  "signerConfigurationManagedByOwner": true,
+  "confirmedOn": "2026-11-16",
+  "evidence": "docs/robinhood-treasury-control-recheck.json",
+  "verifyTreasuryDeploymentBeforeRelease": true
+}

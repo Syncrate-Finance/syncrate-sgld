@@ -77,6 +77,8 @@ The tests' USD4000 gold and USD1 USDG are fixtures only. The owner-approved age 
 
 ## Validation and remaining gates
 
+November16 treasury update: the owner selected `0x42f0E74872c77939422f3c6cEb9D62984BaE5b69`, now deployed on Robinhood, and retains responsibility for signer management. Use `config/robinhood-treasury.json`; this closes the earlier recipient-selection item without prescribing signer addresses or threshold. The required immutable constructor argument remains. No live fee or Safe configuration was executed.
+
 Local formatting/build and the complete Foundry suite must pass. New coverage includes 18-decimal precision, send/delivery failure and retry, wrong endpoint/peer/network/value, duplicate/reordered/conflicting messages, both cancellation races, expired quotes, cap races with Base/remote minters, oracle failures/depeg, redemption rejection/restoration, 0.25% fees, FIFO liquidity shortage, protected pending/refund/allocated funds, frozen recipients, taxed collateral, reentrancy and ownership/pause restrictions.
 
 Local validation completed November 15, 2026 (client date): **65 tests passed, zero failed/skipped**, including 29 new cross-chain tests and both existing actual Base fork tests. Each new invariant ran 128 sequences / 8192 calls with zero handler reverts; the bridge precision fuzz test ran 256 cases. Formatting and optimized build passed. Runtime sizes: Base controller 11414 bytes, Robinhood token/engine 16249, oracle 1566, all below EIP-170. All 29 imported library source files match their baseline Git blobs; no dependency changes were included. GitHub CI must be checked independently after the push. Nonfatal sandbox Foundry cache warnings and existing lint warnings are not suppressed.
