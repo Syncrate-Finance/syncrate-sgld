@@ -12,7 +12,8 @@ import {GoldFeedReader, IGoldAggregator} from "./GoldFeedReader.sol";
 /// @dev No owner mint, timeout refund, liquidity sweep or separate local mint role.
 contract RobinhoodGold is GoldMailbox, ERC20 {
     uint256 public constant MAX_SUPPLY = 193e18;
-    address public constant FEE_RECIPIENT = 0x42f0E74872c77939422f3c6cEb9D62984BaE5b69;
+    /// @notice Explicit target-chain treasury; never assumes a Base contract exists on Robinhood.
+    address public immutable FEE_RECIPIENT;
     IERC20Metadata public immutable usdg;
     IGoldAggregator public immutable usdgPriceFeed;
     uint256 private immutable usdgScale;
@@ -40,11 +41,20 @@ contract RobinhoodGold is GoldMailbox, ERC20 {
     event RedemptionReady(bytes32 indexed id, address indexed recipient, uint256 gross);
     event BridgeBurned(bytes32 indexed id, address indexed recipient, uint256 amount, bytes32 messageId);
 
-    constructor(address endpoint_, address admin, uint32 local_, uint32 remote_, address usdg_, address usdgFeed_)
-        GoldMailbox(endpoint_, admin, local_, remote_)
-        ERC20("Syncrate Gold", "SGLD")
-    {
-        if (usdg_.code.length == 0 || IERC20Metadata(usdg_).decimals() != 6) revert InvalidConfiguration();
+    constructor(
+        address endpoint_,
+        address admin,
+        uint32 local_,
+        uint32 remote_,
+        address usdg_,
+        address usdgFeed_,
+        address treasury_
+    ) GoldMailbox(endpoint_, admin, local_, remote_) ERC20("Syncrate Gold", "SGLD") {
+        if (usdg_.code.length == 0 || IERC20Metadata(usdg_).decimals() != 6) {
+            revert InvalidConfiguration();
+        }
+        if (treasury_ == address(0) || treasury_ == address(this)) revert InvalidConfiguration();
+        FEE_RECIPIENT = treasury_;
         usdg = IERC20Metadata(usdg_);
         usdgPriceFeed = IGoldAggregator(usdgFeed_);
         usdgScale = GoldFeedReader.scale(usdgPriceFeed);

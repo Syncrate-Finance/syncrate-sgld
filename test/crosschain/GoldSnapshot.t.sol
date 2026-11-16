@@ -2,8 +2,17 @@
 pragma solidity 0.8.30;
 import {GoldFixture} from "./GoldFixture.sol";
 import {GoldMessages as G} from "../../src/crosschain/GoldMessages.sol";
+import {RobinhoodGold} from "../../src/crosschain/RobinhoodGold.sol";
 
 contract GoldSnapshotTest is GoldFixture {
+    function testTreasuryIsExplicitImmutableAndCannotBeZero() public {
+        assertEq(remote.FEE_RECIPIENT(), makeAddr("test-treasury"));
+        vm.expectRevert();
+        new RobinhoodGold(
+            address(remoteEndpoint), address(this), ROBIN, BASE, address(usdg), address(usdgFeed), address(0)
+        );
+    }
+
     function testCapturedDepegPriceDeterminesCanonicalOutput() public {
         usdgFeed.set(0.5e8, block.timestamp, 2, 2);
         (bytes32 id, bytes32 messageId) = mintRequest(4000e6, 0.5e18);

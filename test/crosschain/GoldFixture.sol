@@ -185,8 +185,15 @@ abstract contract GoldFixture is Test {
         base = new BaseGoldController(
             address(baseEndpoint), address(this), BASE, ROBIN, address(canonical), address(oracle)
         );
-        remote =
-            new RobinhoodGold(address(remoteEndpoint), address(this), ROBIN, BASE, address(usdg), address(usdgFeed));
+        remote = new RobinhoodGold(
+            address(remoteEndpoint),
+            address(this),
+            ROBIN,
+            BASE,
+            address(usdg),
+            address(usdgFeed),
+            makeAddr("test-treasury")
+        );
         canonical.grantRole(canonical.MINTER_ROLE(), address(base));
         base.setPeer(ROBIN, bytes32(uint256(uint160(address(remote)))));
         remote.setPeer(BASE, bytes32(uint256(uint160(address(base)))));

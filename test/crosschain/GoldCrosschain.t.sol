@@ -428,8 +428,9 @@ contract GoldCrosschainTest is GoldFixture {
         GoldFeedMock g = new GoldFeedMock(18, 4000e18);
         GoldFeedMock u = new GoldFeedMock(6, 1e6);
         GoldSettlementOracle candidate = new GoldSettlementOracle(address(g), 60);
-        RobinhoodGold source =
-            new RobinhoodGold(address(remoteEndpoint), address(this), ROBIN, BASE, address(usdg), address(u));
+        RobinhoodGold source = new RobinhoodGold(
+            address(remoteEndpoint), address(this), ROBIN, BASE, address(usdg), address(u), remote.FEE_RECIPIENT()
+        );
         G.PriceSnapshot memory p = source.currentUSDGPrice();
         assertEq(p.priceUSD18, 1e18);
         assertEq(candidate.mintOutput(4000e6, p), 1e18);

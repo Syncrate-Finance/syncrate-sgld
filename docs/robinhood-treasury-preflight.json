@@ -1,0 +1,23 @@
+{
+  "networks": [
+    {
+      "chainId": 8453,
+      "block": "58177142",
+      "address": "0x42f0E74872c77939422f3c6cEb9D62984BaE5b69",
+      "codeBytes": 171,
+      "codeHash": "0xd7d408ebcd99b2b70be43e20253d6d92a8ea8fab29bd3be7f55b10032331fb4c",
+      "is7702Delegation": false,
+      "prefix": "0x608060405273ffffffffffffffffffffffffffffffffffffffff600054167fa61948"
+    },
+    {
+      "chainId": 4663,
+      "block": "115700849",
+      "address": "0x42f0E74872c77939422f3c6cEb9D62984BaE5b69",
+      "codeBytes": 0,
+      "codeHash": null,
+      "is7702Delegation": false,
+      "prefix": "0x"
+    }
+  ],
+  "broadcast": false
+}

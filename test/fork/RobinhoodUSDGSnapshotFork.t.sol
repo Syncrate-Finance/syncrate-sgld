@@ -18,7 +18,8 @@ contract RobinhoodUSDGSnapshotForkTest is Test {
         if (pinned == 0) vm.createSelectFork(rpc);
         else vm.createSelectFork(rpc, pinned);
         assertEq(block.chainid, 4663);
-        RobinhoodGold remote = new RobinhoodGold(ENDPOINT, address(this), 30416, 30184, USDG, FEED);
+        RobinhoodGold remote =
+            new RobinhoodGold(ENDPOINT, address(this), 30416, 30184, USDG, FEED, makeAddr("fork-treasury"));
         address canonicalPeer = makeAddr("fork-canonical-peer");
         remote.setPeer(30184, bytes32(uint256(uint160(canonicalPeer))));
         remote.setPaused(false);
