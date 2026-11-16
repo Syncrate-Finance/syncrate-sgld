@@ -44,7 +44,7 @@ abstract contract GoldMailbox is OApp, Pausable, ReentrancyGuard {
         _setPeer(eid_, peer);
     }
 
-    function setPaused(bool value) external onlyOwner {
+    function setPaused(bool value) public virtual onlyOwner {
         if (value) {
             _pause();
         } else {
