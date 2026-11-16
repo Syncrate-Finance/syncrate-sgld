@@ -40,9 +40,10 @@ contract BaseGoldController is GoldMailbox {
         onlyOwner
         whenPaused
     {
+        uint256 cap = asset.MAX_CANONICAL_SUPPLY();
         if (
-            perOperation == 0 || outstanding == 0 || capacityPerDay == 0 || outstanding > 193e18
-                || capacityPerDay > 193e18 || perOperation > outstanding || perOperation > capacityPerDay
+            perOperation == 0 || outstanding == 0 || capacityPerDay == 0 || outstanding > cap || capacityPerDay > cap
+                || perOperation > outstanding || perOperation > capacityPerDay
         ) revert InvalidConfiguration();
         uint256 previous = availableExposure();
         exposureAvailable = exposureUpdatedAt == 0 ? capacityPerDay : Math.min(previous, capacityPerDay);
@@ -81,7 +82,7 @@ contract BaseGoldController is GoldMailbox {
     {
         if (asset_.code.length == 0 || oracle_.code.length == 0) revert InvalidConfiguration();
         asset = ICanonicalGold(asset_);
-        if (asset.MAX_CANONICAL_SUPPLY() != 193e18 || !asset.globalSupplyCapInitialized()) {
+        if (asset.MAX_CANONICAL_SUPPLY() == 0 || !asset.globalSupplyCapInitialized()) {
             revert InvalidConfiguration();
         }
         oracle = IGoldSettlementOracle(oracle_);

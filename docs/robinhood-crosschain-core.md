@@ -1,5 +1,8 @@
 # Robinhood SGLD: development contract core
 
+> Inventory clarification, November 16: 193 is current backing, not a permanent ceiling. The completed fixed-cap upgrade is followed by the adjustable-inventory correction in [robinhood-adjustable-inventory.md](robinhood-adjustable-inventory.md). Any fixed-193 claims or deployment commands below describe the earlier candidate and are superseded for the next release.
+
+
 This is phase 2 development under the owner-approved Base-canonical design. It is **not deployed, independently audited or configured as a live route**. The cap upgrade remains a candidate, not a live upgrade. No existing Base token, engine, staking contract or frontend was changed by this phase.
 
 ## Contracts and accounting

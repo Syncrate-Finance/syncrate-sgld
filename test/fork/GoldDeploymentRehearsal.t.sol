@@ -2,6 +2,8 @@
 pragma solidity 0.8.30;
 import {Test} from "forge-std/Test.sol";
 import {DeployCanonicalCap} from "../../script/crosschain/DeployCanonicalCap.s.sol";
+import {DeployAdjustableCap} from "../../script/crosschain/DeployAdjustableCap.s.sol";
+import {SGLDTokenAdjustableCap} from "../../src/SGLDTokenAdjustableCap.sol";
 import {DeployBaseGoldController} from "../../script/crosschain/DeployBaseGoldController.s.sol";
 import {DeployRobinhoodGold} from "../../script/crosschain/DeployRobinhoodGold.s.sol";
 import {SGLDTokenCapped} from "../../src/SGLDTokenCapped.sol";
@@ -28,14 +30,46 @@ contract GoldDeploymentRehearsalTest is Test {
     function testWrongNetworkStopsAllDeploymentStages() public {
         vm.chainId(1);
         DeployCanonicalCap capScript = new DeployCanonicalCap();
+        DeployAdjustableCap correctionScript = new DeployAdjustableCap();
         DeployBaseGoldController baseScript = new DeployBaseGoldController();
         DeployRobinhoodGold remoteScript = new DeployRobinhoodGold();
         vm.expectRevert();
         capScript.run();
         vm.expectRevert();
+        correctionScript.run();
+        vm.expectRevert();
         baseScript.run();
         vm.expectRevert();
         remoteScript.run();
+    }
+
+    function testAdjustableDeploymentPreservesProxyThenControllerSupportsIncreasedInventory() public {
+        vm.createSelectFork(vm.envOr("BASE_FORK_RPC_URL", string("https://mainnet.base.org")), 58_219_974);
+        vm.deal(ADMIN, 1 ether);
+        SGLDTokenAdjustableCap token = SGLDTokenAdjustableCap(ASSET);
+        uint256 supply = token.totalSupply();
+        SGLDTokenAdjustableCap implementation = new DeployAdjustableCap().run();
+        assertEq(
+            address(
+                uint160(uint256(vm.load(ASSET, 0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc)))
+            ),
+            0x7A930a4B191A6e88281681380426C821C5d0B19E
+        );
+        vm.prank(ADMIN);
+        token.upgradeToAndCall(
+            address(implementation), abi.encodeCall(SGLDTokenAdjustableCap.initializeAdjustableSupplyCap, ())
+        );
+        assertEq(token.totalSupply(), supply);
+        assertEq(token.MAX_CANONICAL_SUPPLY(), 193e18);
+        vm.prank(ADMIN); // disposable fork only
+        token.increaseGlobalSupplyCap(250e18);
+        (, BaseGoldController controller) = new DeployBaseGoldController()
+            .runWithVerifiedImplementation(address(implementation), address(implementation).codehash);
+        assertTrue(controller.paused());
+        assertEq(controller.exposureCapacity(), 0);
+        vm.prank(ADMIN);
+        controller.configureExposureLimits(250e18, 250e18, 250e18);
+        assertFalse(token.hasRole(token.MINTER_ROLE(), address(controller)));
     }
 
     function testBaseScriptsPreserveProxyAndDeployPausedThenRehearseColdHandler() public {
@@ -56,9 +90,8 @@ contract GoldDeploymentRehearsalTest is Test {
         // Separate owner-authorized upgrade is impersonated in this fork ONLY, never by the deployment scripts.
         vm.prank(ADMIN);
         token.upgradeToAndCall(address(implementation), abi.encodeCall(SGLDTokenCapped.initializeGlobalSupplyCap, ()));
-        vm.setEnv("SGLD_CAPPED_IMPLEMENTATION", vm.toString(address(implementation)));
-        vm.setEnv("SGLD_CAPPED_RUNTIME_HASH", vm.toString(address(implementation).codehash));
-        (GoldSettlementOracle oracle, BaseGoldController controller) = new DeployBaseGoldController().run();
+        (GoldSettlementOracle oracle, BaseGoldController controller) = new DeployBaseGoldController()
+            .runWithVerifiedImplementation(address(implementation), address(implementation).codehash);
         assertEq(token.totalSupply(), supplyBefore);
         assertTrue(controller.paused());
         assertEq(controller.owner(), ADMIN);

@@ -10,17 +10,28 @@ import {BaseGoldController} from "../../src/crosschain/BaseGoldController.sol";
 /// @dev No minter grant, peer binding, limits, unpause or financial operation is included.
 contract DeployBaseGoldController is GoldDeploymentProfile {
     function run() external returns (GoldSettlementOracle oracle, BaseGoldController controller) {
+        return runWithVerifiedImplementation(
+            vm.envAddress("SGLD_CAPPED_IMPLEMENTATION"), vm.envBytes32("SGLD_CAPPED_RUNTIME_HASH")
+        );
+    }
+
+    /// @notice Explicit inputs avoid process-environment races in concurrent fork rehearsals.
+    function runWithVerifiedImplementation(address expected, bytes32 expectedHash)
+        public
+        returns (GoldSettlementOracle oracle, BaseGoldController controller)
+    {
         _baseChecks();
-        address expected = vm.envAddress("SGLD_CAPPED_IMPLEMENTATION");
-        bytes32 expectedHash = vm.envBytes32("SGLD_CAPPED_RUNTIME_HASH");
         require(expected != address(0) && expectedHash != bytes32(0), "Verified cap inputs required");
         require(
             _implementation(ASSET) == expected && expected.codehash == expectedHash, "Cap implementation/hash mismatch"
         );
         require(
-            SGLDTokenCapped(ASSET).MAX_CANONICAL_SUPPLY() == 193e18
-                && SGLDTokenCapped(ASSET).globalSupplyCapInitialized(),
+            SGLDTokenCapped(ASSET).MAX_CANONICAL_SUPPLY() > 0 && SGLDTokenCapped(ASSET).globalSupplyCapInitialized(),
             "Cap not initialized"
+        );
+        require(
+            SGLDTokenCapped(ASSET).totalSupply() <= SGLDTokenCapped(ASSET).MAX_CANONICAL_SUPPLY(),
+            "Supply above current cap"
         );
         _feedIdentity(GOLD_FEED, "XAU / USD");
         vm.startBroadcast(DEPLOYER);
