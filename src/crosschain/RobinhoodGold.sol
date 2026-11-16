@@ -6,6 +6,7 @@ import {IERC20Metadata} from "@openzeppelin/contracts/token/ERC20/extensions/IER
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 import {GoldMailbox} from "./GoldMailbox.sol";
 import {GoldMessages as G} from "./GoldMessages.sol";
+import {GoldFeedReader, IGoldAggregator} from "./GoldFeedReader.sol";
 
 /// @notice Development remote token AND USDG intent engine. Only authenticated Base results mint.
 /// @dev No owner mint, timeout refund, liquidity sweep or separate local mint role.
@@ -13,6 +14,8 @@ contract RobinhoodGold is GoldMailbox, ERC20 {
     uint256 public constant MAX_SUPPLY = 193e18;
     address public constant FEE_RECIPIENT = 0x42f0E74872c77939422f3c6cEb9D62984BaE5b69;
     IERC20Metadata public immutable usdg;
+    IGoldAggregator public immutable usdgPriceFeed;
+    uint256 private immutable usdgScale;
     mapping(bytes32 => G.Request) public requests;
     mapping(bytes32 => G.State) public states;
     mapping(bytes32 => bool) public creditsProcessed;
@@ -37,12 +40,22 @@ contract RobinhoodGold is GoldMailbox, ERC20 {
     event RedemptionReady(bytes32 indexed id, address indexed recipient, uint256 gross);
     event BridgeBurned(bytes32 indexed id, address indexed recipient, uint256 amount, bytes32 messageId);
 
-    constructor(address endpoint_, address admin, uint32 local_, uint32 remote_, address usdg_)
+    constructor(address endpoint_, address admin, uint32 local_, uint32 remote_, address usdg_, address usdgFeed_)
         GoldMailbox(endpoint_, admin, local_, remote_)
         ERC20("Syncrate Gold", "SGLD")
     {
         if (usdg_.code.length == 0 || IERC20Metadata(usdg_).decimals() != 6) revert InvalidConfiguration();
         usdg = IERC20Metadata(usdg_);
+        usdgPriceFeed = IGoldAggregator(usdgFeed_);
+        usdgScale = GoldFeedReader.scale(usdgPriceFeed);
+    }
+
+    function currentUSDGPrice() public view returns (G.PriceSnapshot memory) {
+        return GoldFeedReader.snapshot(usdgPriceFeed, usdgScale, G.MAX_FEED_AGE);
+    }
+
+    function getRequest(bytes32 id) external view returns (G.Request memory) {
+        return requests[id];
     }
 
     function requestMint(uint256 amount, uint256 minOutput, uint256 deadline, address recipient)
@@ -69,10 +82,13 @@ contract RobinhoodGold is GoldMailbox, ERC20 {
         private
         returns (bytes32 id, bytes32 messageId)
     {
-        if (amount == 0 || recipient == address(0) || recipient == address(this) || deadline <= block.timestamp) revert InvalidTransfer();
+        if (
+            amount == 0 || recipient == address(0) || recipient == address(this) || deadline <= block.timestamp
+                || deadline - block.timestamp > G.MAX_REQUEST_AGE
+        ) revert InvalidTransfer();
         _getPeerOrRevert(remoteEid);
         id = _newId();
-        G.Request memory r = G.Request(id, kind, msg.sender, recipient, amount, minOutput, deadline);
+        G.Request memory r = G.Request(id, kind, msg.sender, recipient, amount, minOutput, deadline, currentUSDGPrice());
         requests[id] = r;
         states[id] = G.State.Pending;
         messageId = _queue(kind, abi.encode(r));

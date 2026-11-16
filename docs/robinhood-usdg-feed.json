@@ -1,0 +1,19 @@
+{
+  "chainId": 4663,
+  "block": "115680327",
+  "address": "0x61B7e5650328764B076A108EFF5fa7282a1B9aD2",
+  "description": "USDG / USD",
+  "decimals": 8,
+  "round": [
+    "18446744073709551780",
+    "99993517",
+    "1794757984",
+    "1794757996",
+    "18446744073709551780"
+  ],
+  "blockTimestamp": "1794823640",
+  "ageSeconds": "65644",
+  "codeHash": "0xbd6f524cdc4268b6bd1bb6f77a8821faeea9c52ee9e0afa0b6d948ce82c966c2",
+  "broadcast": false,
+  "source": "https://reference-data-directory.vercel.app/feeds-robinhood-mainnet.json"
+}

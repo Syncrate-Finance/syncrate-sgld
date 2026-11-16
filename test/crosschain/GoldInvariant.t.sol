@@ -77,7 +77,7 @@ contract GoldCrosschainHandler is Test {
         amount = bound(amount, 1, 800_000e6);
         if (amount > usdg.balanceOf(address(this))) return;
         (bytes32 id, bytes32 messageId) =
-            remote.requestMint(amount, unfavorable ? 193e18 : 0, block.timestamp + 1 hours, address(this));
+            remote.requestMint(amount, unfavorable ? 193e18 : 0, block.timestamp + 10 minutes, address(this));
         intents.push(id);
         messages.push(Entry(false, messageId));
     }
@@ -87,7 +87,7 @@ contract GoldCrosschainHandler is Test {
         if (balance == 0) return;
         amount = bound(amount, 1, balance);
         (bytes32 id, bytes32 messageId) = remote.requestRedemption(
-            amount, unfavorable ? type(uint128).max : 0, block.timestamp + 1 hours, address(this)
+            amount, unfavorable ? type(uint128).max : 0, block.timestamp + 10 minutes, address(this)
         );
         pendingRetirements += int256(amount);
         intents.push(id);
@@ -166,7 +166,7 @@ contract GoldCrosschainHandler is Test {
     }
 
     function _request(bytes32 id) private view returns (G.Request memory r) {
-        (r.id, r.kind, r.owner, r.recipient, r.amount, r.minOutput, r.deadline) = remote.requests(id);
+        r = remote.getRequest(id);
     }
 }
 

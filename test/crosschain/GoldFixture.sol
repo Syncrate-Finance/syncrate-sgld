@@ -178,14 +178,15 @@ abstract contract GoldFixture is Test {
         canonical.mint(alice, 10e18);
         goldFeed = new GoldFeedMock(8, 4000e8);
         usdgFeed = new GoldFeedMock(8, 1e8);
-        oracle = new GoldSettlementOracle(address(goldFeed), address(usdgFeed), 1 days, 1 days);
+        oracle = new GoldSettlementOracle(address(goldFeed), 1 days);
         baseEndpoint = new GoldEndpointMock(BASE);
         remoteEndpoint = new GoldEndpointMock(ROBIN);
         usdg = new GoldUSDGMock();
         base = new BaseGoldController(
             address(baseEndpoint), address(this), BASE, ROBIN, address(canonical), address(oracle)
         );
-        remote = new RobinhoodGold(address(remoteEndpoint), address(this), ROBIN, BASE, address(usdg));
+        remote =
+            new RobinhoodGold(address(remoteEndpoint), address(this), ROBIN, BASE, address(usdg), address(usdgFeed));
         canonical.grantRole(canonical.MINTER_ROLE(), address(base));
         base.setPeer(ROBIN, bytes32(uint256(uint160(address(remote)))));
         remote.setPeer(BASE, bytes32(uint256(uint160(address(base)))));
@@ -214,7 +215,7 @@ abstract contract GoldFixture is Test {
 
     function mintRequest(uint256 amount, uint256 minOut) internal returns (bytes32 id, bytes32 messageId) {
         vm.prank(alice);
-        return remote.requestMint(amount, minOut, block.timestamp + 1 hours, alice);
+        return remote.requestMint(amount, minOut, block.timestamp + 10 minutes, alice);
     }
 
     function settleMint(uint256 amount) internal returns (bytes32 id) {
@@ -226,7 +227,7 @@ abstract contract GoldFixture is Test {
 
     function redeemRequest(uint256 amount, uint256 minOut) internal returns (bytes32 id, bytes32 messageId) {
         vm.prank(alice);
-        return remote.requestRedemption(amount, minOut, block.timestamp + 1 hours, alice);
+        return remote.requestRedemption(amount, minOut, block.timestamp + 10 minutes, alice);
     }
 
     function assertBacking() internal view {

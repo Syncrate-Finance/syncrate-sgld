@@ -2,6 +2,8 @@
 
 Status: owner APPROVED this architecture for development on November 15, 2026. Phase 1 is the canonical token cap and upgrade compatibility tests. Live upgrades, deployments and role changes are NOT authorized. This document describes the complete target design; it does not imply that the cross-chain system has already been implemented.
 
+November 16 development update: owner approved reading actual USDG/USD on Robinhood and authenticating its immutable snapshot to Base, where gold pricing remains. Feed age is capped at24hours and request lifetime at15minutes, without a constant-peg fallback. This supersedes the earlier candidate requiring both feeds on Base. See `robinhood-route-verification.md` for the current version2 implementation, live read-only evidence and remaining release gates.
+
 ## Confirmed owner requirements
 
 - Gold backing remains the existing193troy ounces. One SGLD represents one ounce. There must be one shared issuance ceiling, not193 per network.

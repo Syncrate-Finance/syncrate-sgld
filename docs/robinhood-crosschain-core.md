@@ -9,7 +9,8 @@ This is phase 2 development under the owner-approved Base-canonical design. It i
 | `BaseGoldController` | Holds canonical SGLD backing, locks/unlocks bridge transfers, and is the single terminal authority for USDG mint/redemption requests. |
 | `RobinhoodGold` | Remote 18-decimal SGLD ERC-20 and USDG request/payout ledger in one contract. Has no public/owner mint or arbitrary burn role. |
 | `GoldMailbox` | Uses the existing vendored LayerZero V2 OApp's endpoint/peer authentication. Persistent outbox, fee quotes, permissionless dispatch/retry, version checks and payload deduplication. |
-| `GoldSettlementOracle` | Candidate Base settlement adapter requiring both XAU/USD and USDG/USD feeds. Freshness, round completeness, positive prices and decimals validation. |
+| `GoldSettlementOracle` | Base XAU/USD pricing with a fresh USDG/USD snapshot attested by the authenticated Robinhood contract. |
+| `GoldFeedReader` | Shared round, price, decimals and age checks when reading a chain-local feed. |
 | `GoldMessages` | Versioned request, terminal outcome and transfer formats using full-width uint256 token amounts. |
 
 Base canonical supply C must stay at or below 193e18 through phase 1's token-level cap. Let E be the controller's recorded backing liability, R remote supply and I the sum of backed pending credits, returns and unsettled redemption retirements. The tested invariant is `R + I == E`, with `E <= C <= 193e18` and actual canonical escrow balance at least E. Extra tokens donated directly to escrow do not authorize remote minting. Economic supply is `(C - E) + R + I`, not the sum of both ERC-20 supplies.
@@ -62,11 +63,17 @@ The recipient then calls `claimRedemption(id, recipient)`. It pays 99.75% of the
 
 `totalReservedUSDG` includes pending deposits, refundable deposits, queued payouts and allocated payouts. Queued liabilities may exceed local liquidity; pending/refund/allocated amounts must always remain fully reserved. Approval amounts, user minimum output and messaging fee presentation belong to the next frontend phase.
 
-## Oracle and unresolved production policy
+## Owner-approved oracle placement update — November 16, 2026
 
-The adapter converts 6-decimal USDG and 18-decimal SGLD using full-precision integer ratios. It does not assume USDG is always worth USD 1. Gold and USDG/USD feeds must be actual verified **Base** feeds. No verified Base USDG/USD feed has been selected, so this adapter is not yet a usable production configuration. If such a feed is unavailable, a guarded-par alternative needs an explicitly approved risk policy and separate implementation/tests; never insert a constant peg or fake address silently.
+The owner approved reading USDG/USD on Robinhood and carrying its snapshot in the authenticated request while retaining gold pricing on Base. Chainlink's public Base registry has no listed USDG/USD feed. Robinhood feed `0x61B7e5650328764B076A108EFF5fa7282a1B9aD2` was verified by registry and onchain description/decimals/round reads. The Base XAU/USD feed remains `0x5213eBB69743b85644dbB6E25cdF994aFBb8cF31`. No constant USD1 fallback is used.
 
-The tests' USD 4000 gold, USD 1 USDG and one-day staleness bounds are **fixtures only**. Production heartbeat/weekend policy, decimal behavior, USDG freeze/pause/upgrade/source review and any sequencer-outage handling still need completion. A Robinhood XAU feed is not assumed and no Base feed address is copied onto Robinhood.
+The immutable Robinhood feed is read inside request creation, not supplied by the visitor. The stored request includes normalized USD price (18decimals), round ID, feed update time and observation time. This exact snapshot is covered by the peer-authenticated message and original request hash. Base independently requires positive bounded price/nonzero round, update time at or before observation, observation at or before Base time, feed age at most 24hours and observation age at most 15minutes. The requested deadline must be within 15minutes of observation. A snapshot that expires in transit rejects terminally, using the existing USDG refund or remote-token restoration flow.
+
+Public oracle view functions can calculate quotes for caller-supplied snapshots; they do not authenticate arbitrary callers. Only the controller's authenticated request path may use them for canonical issuance or retirement. Source feed authenticity therefore depends on verifying the exact Robinhood peer code/feed configuration and the transport security stack. A change in USDG price after observation is a bounded oracle/transport risk, not eliminated by minimum output. Base's local gold feed is re-read at settlement, with positive complete-round and configured age checks capped at24hours.
+
+Protocol version is now **2** and the remote constructor adds the immutable USDG feed address. The Base oracle constructor takes only its gold feed and maximum gold age. No previous core version has been deployed; this is a development ABI/payload update, not a live migration. Existing version1 messages are rejected.
+
+The tests' USD4000 gold and USD1 USDG are fixtures only. The owner-approved age limits are24hours/15minutes, but production outage/sequencer handling, monitoring and independent review remain release work. A Robinhood XAU feed is not assumed and no Base feed address is copied onto Robinhood. See `docs/robinhood-route-verification.md` for real endpoint/asset/source evidence and verification limits.
 
 ## Validation and remaining gates
 
