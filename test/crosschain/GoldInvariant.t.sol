@@ -59,6 +59,7 @@ contract GoldCrosschainHandler is Test {
         uint256 balance = canonical.balanceOf(address(this));
         if (balance == 0) return;
         amount = bound(amount, 1, balance);
+        if (!base.canAddBacking(amount)) return;
         (, bytes32 messageId) = base.bridgeToRobinhood(amount, address(this));
         pendingCredits += int256(amount);
         messages.push(Entry(true, messageId));

@@ -199,6 +199,7 @@ abstract contract GoldFixture is Test {
         remote.setPeer(BASE, bytes32(uint256(uint160(address(base)))));
         assertTrue(base.paused());
         assertTrue(remote.paused());
+        base.configureExposureLimits(193e18, 193e18, 193e18);
         base.setPaused(false);
         remote.setPaused(false);
         usdg.mint(alice, 1_000_000e6);

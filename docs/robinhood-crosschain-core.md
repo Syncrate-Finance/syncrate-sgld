@@ -4,6 +4,8 @@ This is phase 2 development under the owner-approved Base-canonical design. It i
 
 ## Contracts and accounting
 
+Deployment-preparation update: Base now has explicit per-operation/outstanding/token-bucket exposure controls, initially zero. It cannot unpause until positive limits are set while paused. These entry controls never consume exits and do not replace the token cap. Both gateway owners/delegates are owner-selected `0x9C8671eC3e032BbDb0A9B7577468763dc553DA40`. See `robinhood-paused-deployment.md` and `config/robinhood-paused-deployment.json` for the current paused candidate; the earlier implementation-validation figures below are historical.
+
 | Contract | Responsibility |
 | --- | --- |
 | `BaseGoldController` | Holds canonical SGLD backing, locks/unlocks bridge transfers, and is the single terminal authority for USDG mint/redemption requests. |

@@ -18,6 +18,11 @@ contract BaseGoldController is GoldMailbox {
     ICanonicalGold public immutable asset;
     IGoldSettlementOracle public immutable oracle;
     uint256 public backingLiability;
+    uint256 public maxPerOperation;
+    uint256 public maxOutstandingBacking;
+    uint256 public exposureCapacity;
+    uint256 private exposureAvailable;
+    uint256 private exposureUpdatedAt;
     mapping(bytes32 => bytes32) public requestHashes;
     mapping(bytes32 => G.State) public states;
     mapping(bytes32 => bytes32) public responseMessages;
@@ -25,6 +30,51 @@ contract BaseGoldController is GoldMailbox {
     event BackingLocked(bytes32 indexed id, address indexed recipient, uint256 amount, bytes32 messageId);
     event RequestSettled(bytes32 indexed id, bool accepted, uint256 output, bytes32 messageId);
     event BackingReturned(bytes32 indexed id, address indexed recipient, uint256 amount);
+    event ExposureLimitsConfigured(uint256 maxPerOperation, uint256 maxOutstandingBacking, uint256 capacityPerDay);
+    error ExposureLimitExceeded();
+
+    /// @notice Configure staged exposure while paused. Changes never replenish previously spent budget.
+    /// @dev Token bucket refills at capacity/24h; exits never depend on these entry limits.
+    function configureExposureLimits(uint256 perOperation, uint256 outstanding, uint256 capacityPerDay)
+        external
+        onlyOwner
+        whenPaused
+    {
+        if (
+            perOperation == 0 || outstanding == 0 || capacityPerDay == 0 || outstanding > 193e18
+                || capacityPerDay > 193e18 || perOperation > outstanding || perOperation > capacityPerDay
+        ) revert InvalidConfiguration();
+        uint256 previous = availableExposure();
+        exposureAvailable = exposureUpdatedAt == 0 ? capacityPerDay : Math.min(previous, capacityPerDay);
+        exposureCapacity = capacityPerDay;
+        exposureUpdatedAt = block.timestamp;
+        maxPerOperation = perOperation;
+        maxOutstandingBacking = outstanding;
+        emit ExposureLimitsConfigured(perOperation, outstanding, capacityPerDay);
+    }
+
+    function availableExposure() public view returns (uint256) {
+        if (exposureCapacity == 0) return 0;
+        uint256 elapsed = block.timestamp - exposureUpdatedAt;
+        if (elapsed >= 1 days) return exposureCapacity;
+        return Math.min(exposureCapacity, exposureAvailable + Math.mulDiv(exposureCapacity, elapsed, 1 days));
+    }
+
+    function canAddBacking(uint256 amount) public view returns (bool) {
+        return amount > 0 && amount <= maxPerOperation && backingLiability <= maxOutstandingBacking
+            && amount <= maxOutstandingBacking - backingLiability && amount <= availableExposure();
+    }
+
+    function setPaused(bool value) public override onlyOwner {
+        if (!value && exposureCapacity == 0) revert InvalidConfiguration();
+        super.setPaused(value);
+    }
+
+    function _consumeExposure(uint256 amount) private {
+        // Called only after canAddBacking succeeds, inside a nonreentrant entry/delivery.
+        exposureAvailable = availableExposure() - amount;
+        exposureUpdatedAt = block.timestamp;
+    }
 
     constructor(address endpoint_, address admin, uint32 local_, uint32 remote_, address asset_, address oracle_)
         GoldMailbox(endpoint_, admin, local_, remote_)
@@ -44,6 +94,8 @@ contract BaseGoldController is GoldMailbox {
         returns (bytes32 id, bytes32 messageId)
     {
         if (amount == 0 || recipient == address(0) || bytes32(uint256(uint160(recipient))) == peers[remoteEid]) revert InvalidTransfer();
+        if (!canAddBacking(amount)) revert ExposureLimitExceeded();
+        _consumeExposure(amount);
         _takeExact(asset, msg.sender, amount);
         backingLiability += amount;
         id = _newId();
@@ -84,8 +136,9 @@ contract BaseGoldController is GoldMailbox {
         ) {
             if (r.kind == G.Kind.Mint) {
                 try oracle.mintOutput(r.amount, r.usdgPrice) returns (uint256 quote) {
-                    if (quote > 0 && quote >= r.minOutput) {
+                    if (quote > 0 && quote >= r.minOutput && canAddBacking(quote)) {
                         try asset.mint(address(this), quote) {
+                            _consumeExposure(quote);
                             backingLiability += quote;
                             output = quote;
                             accepted = true;

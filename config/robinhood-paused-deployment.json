@@ -1,0 +1,43 @@
+{
+  "schemaVersion": 1,
+  "status": "Development candidate for paused deployment review; no live deployment approved or performed",
+  "confirmedOn": "2026-11-16",
+  "deployer": "0x9C8671eC3e032BbDb0A9B7577468763dc553DA40",
+  "base": {
+    "chainId": 8453,
+    "localEid": 30184,
+    "remoteEid": 30416,
+    "admin": "0x9C8671eC3e032BbDb0A9B7577468763dc553DA40",
+    "layerZeroDelegate": "0x9C8671eC3e032BbDb0A9B7577468763dc553DA40",
+    "canonicalToken": "0x10C5E0643bCc6C915Cad0335f70A96c1532766eb",
+    "endpoint": "0x1a44076050125825900e736c501f859c50fE728c",
+    "goldFeed": "0x5213eBB69743b85644dbB6E25cdF994aFBb8cF31",
+    "goldMaxAgeSeconds": 86400,
+    "initialPaused": true,
+    "initialExposureCapacity": "0",
+    "initialMaxPerOperation": "0",
+    "initialMaxOutstandingBacking": "0",
+    "initialPeerBound": false,
+    "initialMinterRoleGranted": false
+  },
+  "robinhood": {
+    "chainId": 4663,
+    "localEid": 30416,
+    "remoteEid": 30184,
+    "admin": "0x9C8671eC3e032BbDb0A9B7577468763dc553DA40",
+    "layerZeroDelegate": "0x9C8671eC3e032BbDb0A9B7577468763dc553DA40",
+    "treasury": "0x42f0E74872c77939422f3c6cEb9D62984BaE5b69",
+    "treasurySignerManagement": "Owner-managed; no signer or threshold changes",
+    "endpoint": "0x6F475642a6e85809B1c36Fa62763669b1b48DD5B",
+    "usdg": "0x5fc5360D0400a0Fd4f2af552ADD042D716F1d168",
+    "usdgFeed": "0x61B7e5650328764B076A108EFF5fa7282a1B9aD2",
+    "initialPaused": true,
+    "initialPeerBound": false,
+    "initialSupply": "0"
+  },
+  "candidateMessageReceiveGas": 1500000,
+  "candidateMessageReceiveValue": "0",
+  "securityProfileApprovedForActivation": false,
+  "rolloutAmountsApprovedForActivation": false,
+  "actualNewDeploymentAddresses": null
+}

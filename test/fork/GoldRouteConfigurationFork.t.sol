@@ -125,7 +125,7 @@ contract GoldRouteConfigurationForkTest is Test {
         assertEq(endpoint.getConfig(address(probe), sendLib, remote_, 2), abi.encode(explicit_));
         assertEq(endpoint.getConfig(address(probe), receiveLib, remote_, 2), abi.encode(explicit_));
         // Type-3 executor option encoding, using the vendored protocol encoder (zero receive value).
-        bytes memory receiveOption = ExecutorOptions.encodeLzReceiveOption(400000, 0);
+        bytes memory receiveOption = ExecutorOptions.encodeLzReceiveOption(1500000, 0);
         bytes memory options =
             abi.encodePacked(uint16(3), uint8(1), uint16(receiveOption.length + 1), uint8(1), receiveOption);
         bytes32 id = probe.queueProbe();
