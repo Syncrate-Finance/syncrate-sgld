@@ -1,0 +1,50 @@
+{
+  "proxy": "0x5fc5360D0400a0Fd4f2af552ADD042D716F1d168",
+  "implementation": "0x68184c449e1a8f34fa18d289737129fd27b66f8f",
+  "block": "115688821",
+  "chainId": 4663,
+  "source": "https://sourcify.dev/server/v2/contract/4663/0x68184c449e1a8f34fa18d289737129fd27b66f8f?fields=all",
+  "compilation": {
+    "language": "Solidity",
+    "compiler": "solc",
+    "compilerVersion": "0.8.28+commit.7893614a",
+    "compilerSettings": {
+      "optimizer": {
+        "runs": 200,
+        "enabled": true
+      },
+      "evmVersion": "paris"
+    },
+    "name": "USDG",
+    "fullyQualifiedName": "contracts/stablecoins/USDG.sol:USDG"
+  },
+  "runtimeMatch": "match",
+  "creationMatch": "match",
+  "liveRuntimeMatchesVerifiedSource": true,
+  "runtimeCodeHash": "0x3a551ac5c744af57e68a1d1431ac403c0f516ffd7d224a75746aee11fc4f3baf",
+  "admin": "0xcFA0388f5ddf905FdC08c45c716C15Dc10A14C6F",
+  "facets": [
+    {
+      "signature": "pause()",
+      "address": "0x58cab81e3d8468A0e90df8cBfacb34535e1DE942"
+    },
+    {
+      "signature": "unpause()",
+      "address": "0x58cab81e3d8468A0e90df8cBfacb34535e1DE942"
+    },
+    {
+      "signature": "freeze(address)",
+      "address": "0x58cab81e3d8468A0e90df8cBfacb34535e1DE942"
+    },
+    {
+      "signature": "unfreeze(address)",
+      "address": "0x58cab81e3d8468A0e90df8cBfacb34535e1DE942"
+    },
+    {
+      "signature": "wipeFrozenAddress(address)",
+      "address": "0x58cab81e3d8468A0e90df8cBfacb34535e1DE942"
+    }
+  ],
+  "broadcast": false,
+  "scope": "Implementation identity and initial source review; not a full facet or issuer-governance audit"
+}

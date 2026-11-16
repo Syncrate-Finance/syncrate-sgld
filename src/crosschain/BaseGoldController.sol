@@ -78,9 +78,12 @@ contract BaseGoldController is GoldMailbox {
         requestHashes[r.id] = digest;
         uint256 output;
         bool accepted;
-        if (kind != G.Kind.Cancel && block.timestamp <= r.deadline) {
+        if (
+            kind != G.Kind.Cancel && block.timestamp <= r.deadline && G.validPrice(r.usdgPrice)
+                && r.deadline >= r.usdgPrice.observedAt && r.deadline - r.usdgPrice.observedAt <= G.MAX_REQUEST_AGE
+        ) {
             if (r.kind == G.Kind.Mint) {
-                try oracle.mintOutput(r.amount) returns (uint256 quote) {
+                try oracle.mintOutput(r.amount, r.usdgPrice) returns (uint256 quote) {
                     if (quote > 0 && quote >= r.minOutput) {
                         try asset.mint(address(this), quote) {
                             backingLiability += quote;
@@ -90,7 +93,7 @@ contract BaseGoldController is GoldMailbox {
                     }
                 } catch {}
             } else {
-                try oracle.redeemOutput(r.amount) returns (uint256 quote) {
+                try oracle.redeemOutput(r.amount, r.usdgPrice) returns (uint256 quote) {
                     uint256 net = quote - Math.mulDiv(quote, 25, 10000);
                     if (quote > 0 && net >= r.minOutput && r.amount <= backingLiability) {
                         // A failed canonical burn retries delivery; it does not pay or restore remote tokens.

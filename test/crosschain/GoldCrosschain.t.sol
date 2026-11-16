@@ -6,6 +6,7 @@ import {GoldMessages as G} from "../../src/crosschain/GoldMessages.sol";
 import {GoldMailbox} from "../../src/crosschain/GoldMailbox.sol";
 import {GoldSettlementOracle} from "../../src/crosschain/GoldSettlementOracle.sol";
 import {BaseGoldController} from "../../src/crosschain/BaseGoldController.sol";
+import {RobinhoodGold} from "../../src/crosschain/RobinhoodGold.sol";
 import {Origin} from "@layerzerolabs/lz-evm-protocol-v2/contracts/interfaces/ILayerZeroEndpointV2.sol";
 
 contract GoldCrosschainTest is GoldFixture {
@@ -280,7 +281,7 @@ contract GoldCrosschainTest is GoldFixture {
         remote.setPaused(true);
         vm.prank(alice);
         vm.expectRevert();
-        remote.requestMint(1e6, 0, block.timestamp + 1 hours, alice);
+        remote.requestMint(1e6, 0, block.timestamp + 10 minutes, alice);
         remote.dispatch{value: 1}(messageId, "");
         uint256 packetIndex = remoteEndpoint.count() - 1;
         vm.expectRevert();
@@ -309,11 +310,11 @@ contract GoldCrosschainTest is GoldFixture {
         usdg.setTaxed(true);
         vm.prank(alice);
         vm.expectRevert();
-        remote.requestMint(4000e6, 0, block.timestamp + 1 hours, alice);
+        remote.requestMint(4000e6, 0, block.timestamp + 10 minutes, alice);
         assertEq(remote.pendingUSDG(), 0);
         usdg.setTaxed(false);
         usdg.setCallback(
-            address(remote), abi.encodeCall(remote.requestMint, (1e6, 0, block.timestamp + 1 hours, alice))
+            address(remote), abi.encodeCall(remote.requestMint, (1e6, 0, block.timestamp + 10 minutes, alice))
         );
         mintRequest(4000e6, 0);
         assertFalse(usdg.callbackSucceeded());
@@ -321,23 +322,25 @@ contract GoldCrosschainTest is GoldFixture {
     }
 
     function testOracleDepegAndRoundValidation() public {
-        assertEq(oracle.mintOutput(4000e6), 1e18);
-        assertEq(oracle.redeemOutput(1e18), 4000e6);
+        G.PriceSnapshot memory p = remote.currentUSDGPrice();
+        assertEq(oracle.mintOutput(4000e6, p), 1e18);
+        assertEq(oracle.redeemOutput(1e18, p), 4000e6);
         usdgFeed.set(0.5e8, block.timestamp, 2, 2);
-        assertEq(oracle.mintOutput(4000e6), 0.5e18);
-        assertEq(oracle.redeemOutput(1e18), 8000e6);
+        p = remote.currentUSDGPrice();
+        assertEq(oracle.mintOutput(4000e6, p), 0.5e18);
+        assertEq(oracle.redeemOutput(1e18, p), 8000e6);
         goldFeed.set(-1, block.timestamp, 2, 2);
         vm.expectRevert();
-        oracle.mintOutput(1e6);
+        oracle.mintOutput(1e6, p);
         goldFeed.set(4000e8, block.timestamp + 1, 2, 2);
         vm.expectRevert();
-        oracle.mintOutput(1e6);
+        oracle.mintOutput(1e6, p);
         goldFeed.set(4000e8, block.timestamp, 2, 1);
         vm.expectRevert();
-        oracle.mintOutput(1e6);
+        oracle.mintOutput(1e6, p);
         goldFeed.set(4000e8, 0, 1, 1);
         vm.expectRevert();
-        oracle.mintOutput(1e6);
+        oracle.mintOutput(1e6, p);
     }
 
     function testFuzzBridgePrecision(uint256 amount) public {
@@ -424,16 +427,21 @@ contract GoldCrosschainTest is GoldFixture {
     function testMixedOracleDecimalsAndUSDGStaleness() public {
         GoldFeedMock g = new GoldFeedMock(18, 4000e18);
         GoldFeedMock u = new GoldFeedMock(6, 1e6);
-        GoldSettlementOracle candidate = new GoldSettlementOracle(address(g), address(u), 60, 60);
-        assertEq(candidate.mintOutput(4000e6), 1e18);
-        assertEq(candidate.redeemOutput(1e18), 4000e6);
-        u.set(1e6, block.timestamp - 61, 2, 2);
+        GoldSettlementOracle candidate = new GoldSettlementOracle(address(g), 60);
+        RobinhoodGold source = new RobinhoodGold(
+            address(remoteEndpoint), address(this), ROBIN, BASE, address(usdg), address(u), remote.FEE_RECIPIENT()
+        );
+        G.PriceSnapshot memory p = source.currentUSDGPrice();
+        assertEq(p.priceUSD18, 1e18);
+        assertEq(candidate.mintOutput(4000e6, p), 1e18);
+        assertEq(candidate.redeemOutput(1e18, p), 4000e6);
+        u.set(1e6, block.timestamp - 1 days - 1, 2, 2);
         vm.expectRevert();
-        candidate.redeemOutput(1e18);
+        source.currentUSDGPrice();
         vm.expectRevert();
-        new GoldSettlementOracle(address(g), address(0), 60, 60);
+        new GoldSettlementOracle(address(0), 60);
         vm.expectRevert();
-        new GoldSettlementOracle(address(g), address(u), 0, 60);
+        new GoldSettlementOracle(address(g), 0);
     }
 
     function testCannotBridgeIntoDestinationGatewayOrDispatchInventedPayload() public {

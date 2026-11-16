@@ -1,0 +1,324 @@
+{
+  "observedAt": "2026-11-16T10:06:04.098Z",
+  "sources": {
+    "layerZero": "https://metadata.layerzero-api.com/v1/metadata/deployments",
+    "chainlink": "https://reference-data-directory.vercel.app/feeds-ethereum-mainnet-base-1.json"
+  },
+  "broadcast": false,
+  "networks": [
+    {
+      "key": "base-mainnet",
+      "chainId": 8453,
+      "eid": 30184,
+      "block": "58165944",
+      "remoteEid": 30416,
+      "endpoints": {
+        "endpointV2": {
+          "address": "0x1a44076050125825900e736c501f859c50fe728c",
+          "hasCode": true,
+          "codeHash": "0x086c2e9e37f5bdaf45013882cf40f7a43b35c879302ff1ad4a4010d09b4d7237"
+        },
+        "sendUln302": {
+          "address": "0xb5320b0b3a13cc860893e2bd79fcd7e13484dda2",
+          "hasCode": true,
+          "codeHash": "0xdd60d5461da3a779567301a7f52c4de2fd7d4c829b3e8de663bb2149be857275"
+        },
+        "receiveUln302": {
+          "address": "0xc70ab6f32772f59fbfc23889caf4ba3376c84baf",
+          "hasCode": true,
+          "codeHash": "0x0233b24a3c6dca1c09157ec32cab896b15d8fac43bad9d2b8850e16d67cc70ef"
+        },
+        "executor": {
+          "address": "0x2cca08ae69e0c44b18a57ab2a87644234daebae4",
+          "hasCode": true,
+          "codeHash": "0xa83a9b8ec89d3f2ad46dce21236e0fd023f166b7517fe6f82fd3ade9132ae3f7"
+        }
+      },
+      "supported": {
+        "ok": true,
+        "value": true
+      },
+      "sendDefault": {
+        "ok": true,
+        "value": "0xB5320B0B3a13cC860893E2Bd79FCd7e13484Dda2"
+      },
+      "receiveDefault": {
+        "ok": true,
+        "value": "0xc70AB6f32772f59fBfc23889Caf4Ba3376C84bAf"
+      },
+      "sendConfig": {
+        "ok": true,
+        "value": {
+          "confirmations": "10",
+          "requiredDVNCount": 1,
+          "optionalDVNCount": 0,
+          "optionalDVNThreshold": 0,
+          "requiredDVNs": [
+            "0x6498b0632f3834D7647367334838111c8C889703"
+          ],
+          "optionalDVNs": []
+        }
+      },
+      "receiveConfig": {
+        "ok": true,
+        "value": {
+          "confirmations": "5",
+          "requiredDVNCount": 1,
+          "optionalDVNCount": 0,
+          "optionalDVNThreshold": 0,
+          "requiredDVNs": [
+            "0x6498b0632f3834D7647367334838111c8C889703"
+          ],
+          "optionalDVNs": []
+        }
+      },
+      "executorConfig": {
+        "ok": true,
+        "value": {
+          "maxMessageSize": 10000,
+          "executor": "0x2CCA08ae69E0C44b18a57Ab2A87644234dAebaE4"
+        }
+      },
+      "dvns": [
+        {
+          "address": "0x9e059a54699a285714207b43b055483e78faac25",
+          "name": "LayerZero Labs",
+          "id": "layerzero-labs",
+          "config": {
+            "ok": true,
+            "value": [
+              "77000",
+              12000,
+              "0"
+            ]
+          },
+          "fee20": {
+            "ok": true,
+            "value": "2060671622400"
+          }
+        },
+        {
+          "address": "0xcd37ca043f8479064e10635020c65ffc005d36f6",
+          "name": "Twinstake",
+          "id": "nethermind",
+          "config": {
+            "ok": true,
+            "value": [
+              "77000",
+              12000,
+              "0"
+            ]
+          },
+          "fee20": {
+            "ok": true,
+            "value": "2035921132800"
+          }
+        },
+        {
+          "address": "0xa7b5189bca84cd304d8553977c7c614329750d99",
+          "name": "Horizen",
+          "id": "horizen-labs",
+          "config": {
+            "ok": true,
+            "value": [
+              "77000",
+              12000,
+              "0"
+            ]
+          },
+          "fee20": {
+            "ok": true,
+            "value": "2060671622400"
+          }
+        },
+        {
+          "address": "0x4fb4d1a9d7197248bce8954dd9d3427b944fb97f",
+          "name": "Paxos",
+          "id": "paxos",
+          "config": {
+            "ok": true,
+            "value": [
+              "77000",
+              12000,
+              "0"
+            ]
+          },
+          "fee20": {
+            "ok": true,
+            "value": "2122547846400"
+          }
+        }
+      ],
+      "goldFeed": {
+        "ok": true,
+        "value": {
+          "address": "0x5213eBB69743b85644dbB6E25cdF994aFBb8cF31",
+          "description": "XAU / USD",
+          "decimals": 8,
+          "round": [
+            "36893488147419106631",
+            "386001300000",
+            "1794814131",
+            "1794814143",
+            "36893488147419106631"
+          ]
+        }
+      }
+    },
+    {
+      "key": "robinhood-mainnet",
+      "chainId": 4663,
+      "eid": 30416,
+      "block": "115679648",
+      "remoteEid": 30184,
+      "endpoints": {
+        "endpointV2": {
+          "address": "0x6f475642a6e85809b1c36fa62763669b1b48dd5b",
+          "hasCode": true,
+          "codeHash": "0xcfbbc5787620fd3bc7117ecad89067b17fa445b3e6b7afd724e3a347a9d67763"
+        },
+        "sendUln302": {
+          "address": "0xc39161c743d0307eb9bcc9fef03eeb9dc4802de7",
+          "hasCode": true,
+          "codeHash": "0xcd2121f01434744b27de5bf44d17417ea7478f16068e183b4d3cc061505d832f"
+        },
+        "receiveUln302": {
+          "address": "0xe1844c5d63a9543023008d332bd3d2e6f1fe1043",
+          "hasCode": true,
+          "codeHash": "0x845ea4dac06daac781355bf6790478f2114a7917ec922936d5dbe7e6e2d4979f"
+        },
+        "executor": {
+          "address": "0x4208d6e27538189bb48e603d6123a94b8abe0a0b",
+          "hasCode": true,
+          "codeHash": "0x7957b471a6c849638a6c125d9a55585a166a9d428275b0de233b29870d707740"
+        }
+      },
+      "supported": {
+        "ok": true,
+        "value": true
+      },
+      "sendDefault": {
+        "ok": true,
+        "value": "0xC39161c743D0307EB9BCc9FEF03eeb9Dc4802de7"
+      },
+      "receiveDefault": {
+        "ok": true,
+        "value": "0xe1844c5D63a9543023008D332Bd3d2e6f1FE1043"
+      },
+      "sendConfig": {
+        "ok": true,
+        "value": {
+          "confirmations": "5",
+          "requiredDVNCount": 1,
+          "optionalDVNCount": 0,
+          "optionalDVNThreshold": 0,
+          "requiredDVNs": [
+            "0x6788f52439ACA6BFF597d3eeC2DC9a44B8FEE842"
+          ],
+          "optionalDVNs": []
+        }
+      },
+      "receiveConfig": {
+        "ok": true,
+        "value": {
+          "confirmations": "10",
+          "requiredDVNCount": 1,
+          "optionalDVNCount": 0,
+          "optionalDVNThreshold": 0,
+          "requiredDVNs": [
+            "0x6788f52439ACA6BFF597d3eeC2DC9a44B8FEE842"
+          ],
+          "optionalDVNs": []
+        }
+      },
+      "executorConfig": {
+        "ok": true,
+        "value": {
+          "maxMessageSize": 10000,
+          "executor": "0x4208D6E27538189bB48E603D6123A94b8Abe0A0b"
+        }
+      },
+      "dvns": [
+        {
+          "address": "0xd01ae6905d48315f7be10c7330aecf8360ef5b12",
+          "name": "LayerZero Labs",
+          "id": "layerzero-labs",
+          "config": {
+            "ok": true,
+            "value": [
+              "77000",
+              12000,
+              "0"
+            ]
+          },
+          "fee20": {
+            "ok": true,
+            "value": "640197244416"
+          }
+        },
+        {
+          "address": "0x0ffe02df012299a370d5dd69298a5826eacafdf8",
+          "name": "Twinstake",
+          "id": "nethermind",
+          "config": {
+            "ok": true,
+            "value": [
+              "77000",
+              12000,
+              "0"
+            ]
+          },
+          "fee20": {
+            "ok": true,
+            "value": "632818113638"
+          }
+        },
+        {
+          "address": "0x1258a278519c7f4bd997a9c3bfd4aa802a028d89",
+          "name": "Horizen",
+          "id": "horizen-labs",
+          "config": {
+            "ok": true,
+            "value": [
+              "77000",
+              12000,
+              "0"
+            ]
+          },
+          "fee20": {
+            "ok": true,
+            "value": "640197244416"
+          }
+        },
+        {
+          "address": "0x2832b240200c13d02250ec39bd0c20c199757891",
+          "name": "Paxos",
+          "id": "paxos",
+          "config": {
+            "ok": true,
+            "value": [
+              "77000",
+              12000,
+              "0"
+            ]
+          },
+          "fee20": {
+            "ok": true,
+            "value": "632818113638"
+          }
+        }
+      ],
+      "usdg": {
+        "ok": true,
+        "value": {
+          "address": "0x5fc5360D0400a0Fd4f2af552ADD042D716F1d168",
+          "symbol": "USDG",
+          "decimals": 6,
+          "implementation": "0x00000000000000000000000068184c449e1a8f34fa18d289737129fd27b66f8f"
+        }
+      }
+    }
+  ],
+  "basePublicFeedCount": 193,
+  "baseListedUSDGFeeds": []
+}

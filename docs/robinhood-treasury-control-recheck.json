@@ -1,0 +1,53 @@
+{
+  "observedAt": "2026-11-16T10:54:17.643Z",
+  "treasury": "0x42f0E74872c77939422f3c6cEb9D62984BaE5b69",
+  "ownerSelectionConfirmed": true,
+  "networks": [
+    {
+      "chainId": 8453,
+      "block": "58180396",
+      "address": "0x42f0E74872c77939422f3c6cEb9D62984BaE5b69",
+      "owners": [
+        "0x8E4f469f1d07E3cA4747706Cb94624852D807243",
+        "0xb27c81FE08192d7E817C6E56a783E3AAdc1a6CD3"
+      ],
+      "threshold": "2",
+      "implementation": "0x29fcB43b46531BcA003ddC8FCB67FFE91900C762",
+      "implementationCodeHash": "0xb1f926978a0f44a2c0ec8fe822418ae969bd8c3f18d61e5103100339894f81ff",
+      "version": "1.4.1",
+      "ownerContracts": [
+        {
+          "address": "0x8E4f469f1d07E3cA4747706Cb94624852D807243",
+          "hasCode": false
+        },
+        {
+          "address": "0xb27c81FE08192d7E817C6E56a783E3AAdc1a6CD3",
+          "hasCode": false
+        }
+      ]
+    },
+    {
+      "chainId": 4663,
+      "block": "115707090",
+      "address": "0x42f0E74872c77939422f3c6cEb9D62984BaE5b69",
+      "owners": [
+        "0x6dAD6291941559c3a088281A9AfF1d0EFDedA4eA"
+      ],
+      "threshold": "1",
+      "implementation": "0x29fcB43b46531BcA003ddC8FCB67FFE91900C762",
+      "implementationCodeHash": "0xb1f926978a0f44a2c0ec8fe822418ae969bd8c3f18d61e5103100339894f81ff",
+      "version": "1.4.1",
+      "ownerContracts": [
+        {
+          "address": "0x6dAD6291941559c3a088281A9AfF1d0EFDedA4eA",
+          "hasCode": false
+        }
+      ]
+    }
+  ],
+  "sameOwners": false,
+  "sameThreshold": false,
+  "sameImplementationCode": true,
+  "broadcast": false,
+  "scope": "Read-only deployment and signer-configuration check; no spend or signing rehearsal"
+}
