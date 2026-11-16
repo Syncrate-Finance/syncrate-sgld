@@ -62,6 +62,7 @@ contract SGLDToken is
 
     function _update(address from, address to, uint256 value)
         internal
+        virtual
         override(ERC20Upgradeable, ERC20PausableUpgradeable)
     {
         super._update(from, to, value);
