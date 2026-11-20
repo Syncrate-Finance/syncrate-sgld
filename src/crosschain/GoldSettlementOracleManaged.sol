@@ -38,16 +38,17 @@ contract GoldSettlementOracleManaged is AccessControl, IGoldSettlementOracle {
     function _setFeed(address feed) private {
         if (feed.code.length == 0) revert InvalidConfiguration();
         (bool ok, bytes memory value) = feed.staticcall(abi.encodeWithSignature("description()"));
-        if (!ok || keccak256(bytes(abi.decode(value, (string)))) != keccak256("XAU / USD")) revert InvalidConfiguration();
+        if (!ok || keccak256(bytes(abi.decode(value, (string)))) != keccak256("XAU / USD")) {
+            revert InvalidConfiguration();
+        }
         gold = IGoldAggregator(feed);
         goldScale = GoldFeedReader.scale(gold);
         emit GoldPriceFeedUpdated(feed);
     }
 
     function getCollateralValueInUsd(uint256 sgldAmount) public view returns (uint256) {
-        return Math.mulDiv(
-            sgldAmount, GoldFeedReader.snapshot(gold, goldScale, oracleStalenessThreshold).priceUSD18, 1e18
-        );
+        return
+            Math.mulDiv(sgldAmount, GoldFeedReader.snapshot(gold, goldScale, oracleStalenessThreshold).priceUSD18, 1e18);
     }
 
     function mintOutput(uint256 amount, G.PriceSnapshot calldata price) external view returns (uint256) {

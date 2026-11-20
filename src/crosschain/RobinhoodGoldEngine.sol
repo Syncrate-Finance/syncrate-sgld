@@ -202,9 +202,8 @@ contract RobinhoodGoldEngine is GoldMailboxUpgradeable, ERC20Upgradeable, UUPSUp
             requestFeeBps[id] = redeemFeeBps;
             requestMinimumNet[id] = minOutput;
             // net = gross - floor(gross * fee / BPS); invert without rejecting a valid one-unit payout.
-            minOutput = minOutput == 0
-                ? 0
-                : Math.mulDiv(minOutput - 1, BPS_DENOMINATOR, BPS_DENOMINATOR - redeemFeeBps) + 1;
+            minOutput =
+                minOutput == 0 ? 0 : Math.mulDiv(minOutput - 1, BPS_DENOMINATOR, BPS_DENOMINATOR - redeemFeeBps) + 1;
         }
         G.Request memory r = G.Request(id, kind, msg.sender, recipient, amount, minOutput, deadline, currentUSDGPrice());
         requests[id] = r;
